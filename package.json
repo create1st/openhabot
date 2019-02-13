@@ -1,0 +1,25 @@
+{
+  "name": "openhabot",
+  "version": "1.0.0",
+  "description": "OpenHab Bot for Facebook Messenger",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/create1st/openhabot.git"
+  },
+  "keywords": [
+    "openhab",
+    "messenger",
+    "facebook",
+    "bot"
+  ],
+  "author": "Sebastian Gil",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/create1st/openhabot/issues"
+  },
+  "homepage": "https://github.com/create1st/openhabot#readme"
+}
