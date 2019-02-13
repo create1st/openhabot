@@ -21,5 +21,10 @@
   "bugs": {
     "url": "https://github.com/create1st/openhabot/issues"
   },
-  "homepage": "https://github.com/create1st/openhabot#readme"
+  "homepage": "https://github.com/create1st/openhabot#readme",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "express": "^4.16.4",
+    "http-status-codes": "^1.3.0"
+  }
 }
