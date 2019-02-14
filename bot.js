@@ -3,14 +3,18 @@ const
   bodyParser = require('body-parser'),
   crypto = require('crypto'),
   request = require('request'),
-  HttpStatus = require('http-status-codes');
-
+  HttpStatus = require('http-status-codes'),
+  {Wit, log} = require('node-wit');
 
 class Bot {
   constructor(config, openHab) {
     this.config = config;
     this.openHab = openHab;
     this.appSecretPoof = crypto.createHmac('sha256', config.appSecret).update(config.accessToken).digest('hex');
+    this.wit = new Wit({
+      accessToken: config.witAccessToken,
+      logger: new log.Logger(log.DEBUG)
+    });
     this.app = express().use(bodyParser.json());
   }
 
@@ -33,8 +37,12 @@ class Bot {
     this.app.post('/webhook', (req, res) => {  
       let body = req.body;
       if (body.object === 'page') {
-        body.entry.forEach(function(entry) {
-          self.handleWebhookEvent(entry.messaging[0])
+        body.entry.forEach((entry) => {
+          entry.messaging.forEach(event => {
+            if (event.message && !event.message.is_echo) {
+              self.handleWebhookEvent(event)
+            }
+          });
         });
         res.status(HttpStatus.OK).send('EVENT_RECEIVED');
       } else {
@@ -55,28 +63,40 @@ class Bot {
   }
 
   handleUnauthorized(senderPsid) {
-    this.callSendAPI(senderPsid, {"text" : "You are not authorized to use this service. Your id has been recorded."});  
+    this.sendMessage(senderPsid, "You are not authorized to use this service. Your id has been recorded.");  
   }
 
-  handleMessage(senderPsid, message) {
-    console.log('message:' + JSON.stringify(message))
-    let response;
-    if (message.text) { 
-      var item = 'zwave_device_bca80c4e_node2_thermostat_setpoint_heating';
-      var newValue = '123';
-      var callback = {};
-      this.openHab.setItemValue(item, newValue, callback);
-      response = {
-        "text": callback.errorMessage
-                ? 'Wystąpił problem z ustawieniem wartości: ' + callback.errorMessage
-                : 'Ustawiłem nową wartość ' + newValue + ' na urządzeniu'
-      }
-    }
-    this.callSendAPI(senderPsid, response);   
+  handleMessage(senderPsid, {nlp, text, attachments}) {
+    let self=this;
+    if (text) {
+      this.wit.message(text).then(({entities}) => {
+        this.openHab.execute(entities, ({item, value, updated, err, res}) => {
+          if (err) {
+            console.error("OpenHab error:", err);
+            self.sendMessage(senderPsid, "Błąd systemu OpenHab: " + err);
+          } else if (!updated) {
+            console.log("OpenHab get value completed");
+            self.sendMessage(senderPsid, "Odczytano wartość " + value);
+          } else {
+            console.log("OpenHab set value completed");
+            self.sendMessage(senderPsid, "Wprowadzono nowe ustawienia");
+          }
+        })  
+      }).catch((err) => {
+        console.error("Wit.Ai error:", err.stack || err);
+        this.sendMessage(senderPsid, "Błąd systemu NLP Wit.Ai: " + err.stack || err); 
+      })
+    } else {
+      this.sendMessage(senderPsid, "Nie rozumiem. Jak mogę Ci pomóc?"); 
+    } 
   }
 
   handlePostback(senderPsid, received_postback) {
 
+  }
+
+  sendMessage(senderPsid, text) {
+    this.callSendAPI(senderPsid, {"text": text}); 
   }
 
   callSendAPI(senderPsid, response) {
@@ -96,7 +116,7 @@ class Bot {
       if (err) {
         console.error("Unable to send message:" + err);
       } else if (res.statusCode != HttpStatus.OK) {
-        console.log('Failed to send message:' + JSON.stringify(res, null, 4));
+        console.log("Failed to send message:" + JSON.stringify(res, null, 4));
       }
     }); 
   }
