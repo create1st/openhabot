@@ -5,7 +5,7 @@
  <img src="https://img.shields.io/badge/PRs-welcome-green.svg" align=left />
 </div>
 
-# Openhabot
+# OpenHaBot
 This is NodeJS based implementation of openHAB Bot for Facebook Messenger
 
 ## Installation
