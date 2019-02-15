@@ -1,8 +1,8 @@
 <div align="center">    
  <img src="https://img.shields.io/github/license/create1st/openhabot.svg" align=left />
- <img src="https://img.shields.io/badge/openHAB-2.4.0-brightgreen.svg" align=left />
- <img src="https://img.shields.io/badge/node-%3E%3D%206.0.0-brightgreen.svg" align=left />
- <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" align=left />
+ <img src="https://img.shields.io/badge/openHAB-2.4.0-green.svg" align=left />
+ <img src="https://img.shields.io/badge/node-%3E%3D%206.0.0-green.svg" align=left />
+ <img src="https://img.shields.io/badge/PRs-welcome-green.svg" align=left />
 </div>
 
 # Openhabot
