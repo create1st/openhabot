@@ -36,7 +36,7 @@ $ ./ngrok http 1337
 	"accessToken": "FB_PAGE_ACCESS_TOKEN",
 	"verifyToken": "USER_RANDOM_VERIFICATION_TOKEN",
 	"appSecret": "FB_APPLICATION_SECRET",
-	"witAccessToken": "WIT_AI_ACCESS_TOKEN"
+	"witAccessToken": "WIT_AI_ACCESS_TOKEN",
 	"authorizedSenders": ["YOUR_FACEBOOK_NUMBER_ID"],
 	"confidenceLevel": "0.77",
 	"language": "en",
