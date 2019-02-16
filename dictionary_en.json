@@ -1,0 +1,10 @@
+{
+	"unauthorized": "You are not authorized to use this service. Your id has been recorded.",
+	"unsupported_message_type": "I don't understand. How can I help you?",
+	"openhab_error": "OpenHab error: %s",
+	"wit_error": "Wit.Ai error: %s",
+	"unrecognized_command": "I don't understand. Please be more precise",
+	"get_value": "The value is %s",
+	"get_value_undefined": "The value is undefined",
+	"set_value": "Tha value has been set"
+}

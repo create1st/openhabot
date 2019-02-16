@@ -1,59 +1,70 @@
-const 
+const
   request = require('request'),
   HttpStatus = require('http-status-codes');
+  utils = require('./utils'),
+  format = utils.format;
 
 class OpenHab {
   constructor(config, sitemap) {
-    this.openHabRest = config.openHabRest;
+    this.openHabRestUri = config.openHabRestUri;
+    this.confidenceLevel = parseFloat(config.confidenceLevel);
     this.sitemap = sitemap;
   }
 
   execute(entities, callback) {
-    console.log("Checking entities: %o", entities)
-    let item = this.find(entities, this.sitemap, callback);
+    console.log('Checking entities: %o', entities)
+    let item = this.find(this.sitemap, entities, callback);
     if (!item) {
       callback({item: null, value: null, updated: false, err: null, res: null});
     }
   }
 
-  find(entities, parent, callback) {
-    let self=this;
+  find(parent, entities, callback) {
     for (const [nodeName, node] of Object.entries(parent)) {
-      if (entities[nodeName] && entities[nodeName][0].confidence > 0.77) {
-        console.log("found: %s", nodeName)
-        if (nodeName == "openhab_set" && entities.number) {
-          return self.setItemValue(node, entities.number[0].value, callback);
-        } else if (nodeName == "openhab_get") {
-          return self.getItemValue(node, callback);
+      let entity = entities[nodeName];
+      if (entity) {
+        for (let rule of entity) {
+          if (rule.confidence > this.confidenceLevel) {
+            console.log('found: %s', nodeName)
+            if (nodeName == 'openhab_set') {
+              let valueEntity = entities.number;
+              if (valueEntity && valueEntity.length == 1) {
+                let value = entities.number[0].value;
+                return this.setItemValue(node, value, callback);
+              }
+            } else if (nodeName == 'openhab_get') {
+              return this.getItemValue(node, callback);
+            }
+            return this.find(node, entities, callback);
+          }
         }
-        return self.find(entities, node, callback);
       }
     };
-    console.log("Not found");
+    console.log('Not found');
     return null;
   }
 
   getItemValue(item, callback) {
-    console.log("Getting OpenHab item %s value", item);
+    console.log('Getting OpenHab item %s value', item);
     let httpOptions = {
-      uri: this.openHabRest +"/items/" + item + "/state",
-      method: "GET",
-      headers: {"Accept": "text/plain"}
+      uri: format('%s/items/%s/state', this.openHabRestUri, item),
+      method: 'GET',
+      headers: {'Accept': 'text/plain'}
     };
     request(httpOptions, (err, res, body) => {
-      callback({item: item,body: body, updated:false, err: err || (res.statusCode != HttpStatus.OK ? body : null), res: res});
+      callback({item: item, value: body, updated: false, err: err || (res.statusCode != HttpStatus.OK ? body : null), res: res});
     });
     return item;
   }
 
   setItemValue(item, value, callback) {
-    console.log("Setting OpenHab item %s value %s", item, value);
+    console.log('Setting OpenHab item %s value %s', item, value);
     let httpOptions = {
-      uri: this.openHabRest + "/items/" + item + "/state",
-      method: "PUT",
+      uri: format('%s/items/%s/state', this.openHabRestUri, item),
+      method: 'PUT',
       headers: {
-        "Content-Type": "text/plain",
-        "Accept": "application/json"
+        'Content-Type': 'text/plain',
+        'Accept': 'application/json'
       },
       body: value.toString()
     };

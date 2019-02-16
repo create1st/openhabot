@@ -10,7 +10,7 @@ This is NodeJS based implementation of openHAB Bot for Facebook Messenger
 
 ## Installation
 ```
-npm install express body-parser --save 
+npm install express body-parser node-wit http-status-codes --save
 
 git clone https://github.com/create1st/openhabot
 ```
@@ -38,7 +38,9 @@ $ ./ngrok http 1337
 	"appSecret": "FB_APPLICATION_SECRET",
 	"witAccessToken": "WIT_AI_ACCESS_TOKEN"
 	"authorizedSenders": ["YOUR_FACEBOOK_NUMBER_ID"],
-	"openHabRest": "http://127.0.0.1:8080/rest"
+	"confidenceLevel": "0.77",
+	"language": "en",
+	"openHabRestUri": "http://127.0.0.1:8080/rest"
 }
 ```
 * Create *sitemap.json*
@@ -99,4 +101,18 @@ Keys in json are Wit.Ai entities/roles which do structure a look up path for Ope
   openhab_unit_degree:
    [ { confidence: 0.61746979290351, value: 'stopnie', type: 'value' },
      [length]: 1 ] }
-```     
+```
+
+* Create *dictionary_{language_id}.json* for your language
+```json
+{
+	"unauthorized": "You are not authorized to use this service. Your id has been recorded.",
+	"unsupported_message_type": "I don't understand. How can I help you?",
+	"openhab_error": "OpenHab error: %s",
+	"wit_error": "Wit.Ai error: %s",
+	"unrecognized_command": "I don't understand. Please be more precise",
+	"get_value": "The value is %s",
+	"get_value_undefined": "The value is undefined",
+	"set_value": "Tha value has been set"
+}
+```
