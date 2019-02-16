@@ -6,20 +6,33 @@ const
   HttpStatus = require('http-status-codes'),
   {Wit, log} = require('node-wit');
 
+function format() {
+    var a, b, c;
+    a = arguments[0];
+    b = [];
+    for(c = 1; c < arguments.length; c++){
+        b.push(arguments[c]);
+    }
+    for (c in b) {
+        a = a.replace(/%[a-z]/, b[c]);
+    }
+    return a;
+}
+
 class Bot {
   constructor(config, openHab) {
     this.config = config;
     this.openHab = openHab;
     this.appSecretPoof = crypto.createHmac('sha256', config.appSecret).update(config.accessToken).digest('hex');
     this.wit = new Wit({
-      accessToken: config.witAccessToken,
-      logger: new log.Logger(log.DEBUG)
+      // logger: new log.Logger(log.DEBUG),
+      accessToken: config.witAccessToken
     });
     this.app = express().use(bodyParser.json());
   }
 
   start() {
-    this.app.listen(this.config.port, () => console.log('webhook is listening on port ' + this.config.port));
+    this.app.listen(this.config.port, () => console.log('webhook is listening on port %s', this.config.port));
     this.app.get('/webhook', (req, res) => {
       let mode = req.query['hub.mode'];
       let token = req.query['hub.verify_token'];
@@ -71,12 +84,18 @@ class Bot {
     if (text) {
       this.wit.message(text).then(({entities}) => {
         this.openHab.execute(entities, ({item, value, updated, err, res}) => {
-          if (err) {
+          if (!item) {
+            console.error("OpenHab sitemap lookup failed.");
+            self.sendMessage(senderPsid, "Nie rozumiem. Możesz wyrazić się jaśniej?");
+          } else if (err) {
             console.error("OpenHab error:", err);
-            self.sendMessage(senderPsid, "Błąd systemu OpenHab: " + err);
+            self.sendMessage(senderPsid, format("Błąd systemu OpenHab: %s", err));
+          } else if (!updated && value) {
+            console.log("OpenHab get value completed");
+            self.sendMessage(senderPsid, format("Odczytano wartość %s", value));
           } else if (!updated) {
             console.log("OpenHab get value completed");
-            self.sendMessage(senderPsid, "Odczytano wartość " + value);
+            self.sendMessage(senderPsid, "Odczytana wartość jest nieustawiona");
           } else {
             console.log("OpenHab set value completed");
             self.sendMessage(senderPsid, "Wprowadzono nowe ustawienia");
@@ -84,7 +103,7 @@ class Bot {
         })  
       }).catch((err) => {
         console.error("Wit.Ai error:", err.stack || err);
-        this.sendMessage(senderPsid, "Błąd systemu NLP Wit.Ai: " + err.stack || err); 
+        this.sendMessage(senderPsid, format("Błąd systemu NLP Wit.Ai: %s", err.stack || err)); 
       })
     } else {
       this.sendMessage(senderPsid, "Nie rozumiem. Jak mogę Ci pomóc?"); 
@@ -114,9 +133,9 @@ class Bot {
       "json": requestBody
     }, (err, res, body) => {
       if (err) {
-        console.error("Unable to send message:" + err);
+        console.error("Unable to send message: %s", err);
       } else if (res.statusCode != HttpStatus.OK) {
-        console.log("Failed to send message:" + JSON.stringify(res, null, 4));
+        console.log("Failed to send message: %o", res);
       }
     }); 
   }
