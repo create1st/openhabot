@@ -15,7 +15,7 @@ npm install express body-parser --save
 git clone https://github.com/create1st/openhabot
 ```
 
-## Congiguration
+## Configuration
 
 1. Create a new Facebook Page for your Bot https://www.facebook.com/pages/create
 2. Create a new Facebook App for your Bot https://developers.facebook.com/quickstarts/?platform=web
