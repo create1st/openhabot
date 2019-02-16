@@ -79,3 +79,24 @@ $ ./ngrok http 1337
 	}
 }
 ```
+Keys in json are Wit.Ai entities/roles which do structure a look up path for OpenHab item. e.g. entries from Wit.Ai look up can look like:
+
+```javascript
+{ openhab_set:
+   [ { confidence: 0.77588039802196, value: 'ustaw', type: 'value' },
+     [length]: 1 ],
+  openhab_settings_temperature:
+   [ { confidence: 0.84355505856879,
+       value: 'temperaturę',
+       type: 'value' },
+     [length]: 1 ],
+  openhab_location_sleeping_room:
+   [ { confidence: 0.77086080572739,
+       value: 'sypialni',
+       type: 'value' },
+     [length]: 1 ],
+  number: [ { confidence: 1, value: 23, type: 'value' }, [length]: 1 ],
+  openhab_unit_degree:
+   [ { confidence: 0.61746979290351, value: 'stopnie', type: 'value' },
+     [length]: 1 ] }
+```     
