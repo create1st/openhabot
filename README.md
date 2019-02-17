@@ -20,12 +20,11 @@ git clone https://github.com/create1st/openhabot
 1. Create a new Facebook Page for your Bot https://www.facebook.com/pages/create
 2. Create a new Facebook App for your Bot https://developers.facebook.com/quickstarts/?platform=web
 3. Create account and install ngrok https://ngrok.com/download
-4. Add product Messanger and set up Webhooks with ngrok host
+4. Add product Messanger and set up Webhooks with http://serveo.net/ host. Check http://serveo.net/ for more details how to configure your own domain
 5. Create Wit.Ai account
 
 ```
-$ ./ngrok authtoken NGROK_AUTH_TOKEN
-$ ./ngrok http 1337
+$ ./ssh -R mydomain:80:localhost:1337 serveo.net
 ```
 
 * Create *config.json*
