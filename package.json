@@ -1,6 +1,6 @@
 {
   "name": "openhabot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "OpenHab Bot for Facebook Messenger",
   "main": "index.js",
   "scripts": {
