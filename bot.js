@@ -53,7 +53,7 @@ class Bot {
   }
 
   handleWebhookEvent({sender, message, postback}) {
-    let senderPsid = sender.id;
+    let senderPsid = sender ? sender.id : null;
     if (this.config.authorizedSenders.legth > 0 && !this.config.authorizedSenders.includes(senderPsid) && message) {
       this.handleUnauthorized(senderPsid);
     } else if (message) {
