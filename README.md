@@ -26,13 +26,13 @@ $ ./ssh -R mydomain:80:localhost:1337 serveo.net
 ```
 
 * Create *config.json*
-FB_PAGE_ACCESS_TOKEN - On Facebook application page: Products -> Messenger -> Token Generation -> (Select a page for you application or create a new one) -> generate token
-FB_APPLICATION_SECRET - On Facebook application page: Settings -> Basic -> App Secret (push the show button)
-USER_RANDOM_VERIFICATION_TOKEN - Type whatever you want. This has to match the webhook verification token specified on Facebook application page: Products -> Webhooks -> Edit Subscription -> Verify Token
-WIT_AI_ACCESS_TOKEN - On Wit.Ai application page: Settings -> API Details -> Server Access Token
-authorizedSenders - Your facebook id and ids of other user who shall be peritted to execute commands. You can leave it empty and that would mean anybody is going to access the page. Since the app is by default set in development mode this means only you will have the access to it. However if you leave it empty you are not going to receive any notification. If you do not know what is your Facebook id then put here anything and on first command the system will respond with it.
-confidenceLevel - depending on quality of your rules and particular language gramma complexity Wit.Ai can guess the entities with some confidence. The confidence level configured in config acts as a threshold under which we consider that the Wit.Ai evaluation was correct or not.
-language - this one is important as you need to have dictionary json file suffixed with language id you have specified here
+  * FB_PAGE_ACCESS_TOKEN - On Facebook application page: Products -> Messenger -> Token Generation -> (Select a page for you application or create a new one) -> generate token
+  * FB_APPLICATION_SECRET - On Facebook application page: Settings -> Basic -> App Secret (push the show button)
+  * USER_RANDOM_VERIFICATION_TOKEN - Type whatever you want. This has to match the webhook verification token specified on Facebook application page: Products -> Webhooks -> Edit Subscription -> Verify Token
+  * WIT_AI_ACCESS_TOKEN - On Wit.Ai application page: Settings -> API Details -> Server Access Token
+  * authorizedSenders - Your facebook id and ids of other user who shall be peritted to execute commands. You can leave it empty and that would mean anybody is going to access the page. Since the app is by default set in development mode this means only you will have the access to it. However if you leave it empty you are not going to receive any notification. If you do not know what is your Facebook id then put here anything and on first command the system will respond with it.
+  * confidenceLevel - depending on quality of your rules and particular language gramma complexity Wit.Ai can guess the entities with some confidence. The confidence level configured in config acts as a threshold under which we consider that the Wit.Ai evaluation was correct or not.
+  * language - this one is important as you need to have dictionary json file suffixed with language id you have specified here
 ```json
 {
 	"webhookPort": "1337",
@@ -48,7 +48,7 @@ language - this one is important as you need to have dictionary json file suffix
 }
 ```
 * Create Wit.Ai account
-* Create Wit.Ai entities and roles https://wit.ai/docs/quickstart (you can find my entities created for polish language at https://wit.ai/create1st/OpenHaBot/entities). Although you can use entities only it is recommended to use both entities and roles. Entities does specify the group, e.g. openhab_location and role does specify particular real world object, e.g. openhab_location_sleeping_room. You may decide to use openhab_location and openhab_settings for entities or decide to use anything you like, however you have to use openhab_set and openhab_get for definition of the keywords related to querying item state and setting a new one. Those are mandatory and have to be present in each definition. At the moment setting a value is limited to numbers (e.g. you cannot toggle the switch, this is still under development) which shall be mapped to wit/number
+* Create Wit.Ai entities and roles https://wit.ai/docs/quickstart (you can find my entities created for polish language at https://wit.ai/create1st/OpenHaBot/entities). Although you can use only entities, it is recommended to use both entities and roles. Entities does specify the group, e.g. openhab_location and role does specify particular real world object, e.g. openhab_location_sleeping_room. You may decide to use openhab_location and openhab_settings for entities or decide to use anything you like, however you have to use openhab_set and openhab_get for definition of the keywords related to querying item state and setting a new one. Those are mandatory and have to be present in each definition. At the moment setting a value is limited to numbers (e.g. you cannot toggle the switch, this is still under development) which shall be mapped to wit/number
 * Create *sitemap.json* to map the items you want to control with OpenHaBot. The mapping has to follow the schema: location (Wit.Ai rule name) -> setting (Wit.Ai rule name) -> operation (get_value or set_value) which maps to particular OpenHab item. In case when item is read-write item then it has to be exposed on both get_value and set_value. For items which are querried without the location the schema is as follows setting (Wit.Ai rule name) -> operation (get_value or set_value). You can add any nesting levels as you need, e.g. level/florr (Wit.Ai rule name) -> location (Wit.Ai rule name) -> setting (Wit.Ai rule name) -> operation (get_value or set_value).
 ```json
 {
