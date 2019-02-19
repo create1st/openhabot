@@ -29,6 +29,10 @@ $ ./ssh -R mydomain:80:localhost:1337 serveo.net
 FB_PAGE_ACCESS_TOKEN - On Facebook application page: Products -> Messenger -> Token Generation -> (Select a page for you application or create a new one) -> generate token
 FB_APPLICATION_SECRET - On Facebook application page: Settings -> Basic -> App Secret (push the show button)
 USER_RANDOM_VERIFICATION_TOKEN - Type whatever you want. This has to match the webhook verification token specified on Facebook application page: Products -> Webhooks -> Edit Subscription -> Verify Token
+WIT_AI_ACCESS_TOKEN - On Wit.Ai application page: Settings -> API Details -> Server Access Token
+authorizedSenders - Your facebook id and ids of other user who shall be peritted to execute commands. You can leave it empty and that would mean anybody is going to access the page. Since the app is by default set in development mode this means only you will have the access to it. However if you leave it empty you are not going to receive any notification. If you do not know what is your Facebook id then put here anything and on first command the system will respond with it.
+confidenceLevel - depending on quality of your rules and particular language gramma complexity Wit.Ai can guess the entities with some confidence. The confidence level configured in config acts as a threshold under which we consider that the Wit.Ai evaluation was correct or not.
+language - this one is important as you need to have dictionary json file suffixed with language id you have specified here
 ```json
 {
 	"webhookPort": "1337",
@@ -118,24 +122,24 @@ Switch neato_vacuumcleaner_neato_is_docked "Bobik docked" <lock> (Vacuum) {chann
 ```json
 {
 	"error": {
-		"unauthorized": "You are not authorized to use this service. Your id has been recorded.",
-		"unsupported_message_type": "Nie rozumiem. Jak mogę Ci pomóc?",		
-		"openhab_call_failed": "Błąd systemu OpenHab: %s",
-		"wit_call_failed": "Błąd systemu NLP Wit.Ai: %s"
+		"unauthorized": "You are not authorized to use this service. Your id %s has been recorded.",
+		"unsupported_message_type": "I don't understand. How can I help you?",
+		"openhab_call_failed": "OpenHab error: %s",
+		"wit_call_failed": "Wit.Ai error: %s"
 	},
 	"message": {
-		"unrecognized_command": "Nie rozumiem. Możesz wyrazić się jaśniej?",
-		"get_value": "Odczytano wartość %s",
-		"get_value_undefined": "Odczytana wartość jest nieustawiona",
-		"set_value": "Wprowadzono nowe ustawienia",
-		"update": "%s zmienił stan na %s"		
+		"unrecognized_command": "I don't understand. Please be more precise",
+		"get_value": "The value is %s",
+		"get_value_undefined": "The value is undefined",
+		"set_value": "Tha value has been set",
+		"update": "%s has changed the state to %s"
 	},
 	"state": {
-		"ERROR": "błąd",
-		"BUSY": "zajęty",
-		"IDLE": "bezczynny",
-		"ON": "włączony",
-		"OFF": "wyłączony"
+		"ERROR": "error",
+		"BUSY": "busy",
+		"IDLE": "idle",
+		"ON": "on",
+		"OFF": "off"
 	}
 }
 ```

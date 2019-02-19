@@ -87,7 +87,7 @@ class Bot {
   }
 
   handleUnauthorized(senderPsid) {
-    this.sendMessage(senderPsid, this.getResponseString('error.unauthorized'));  
+    this.sendMessage(senderPsid, this.getResponseString('error.unauthorized', senderPsid));  
   }
 
   handleMessage(senderPsid, {nlp, text, attachments}) {

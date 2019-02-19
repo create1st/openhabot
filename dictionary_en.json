@@ -1,6 +1,6 @@
 {
 	"error": {
-		"unauthorized": "You are not authorized to use this service. Your id has been recorded.",
+		"unauthorized": "You are not authorized to use this service. Your id %s has been recorded.",
 		"unsupported_message_type": "I don't understand. How can I help you?",
 		"openhab_call_failed": "OpenHab error: %s",
 		"wit_call_failed": "Wit.Ai error: %s"
