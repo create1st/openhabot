@@ -44,6 +44,19 @@ class OpenHab {
     return null;
   }
 
+  getItem(item, callback) {
+    console.log('Getting OpenHab item %s', item);
+    let httpOptions = {
+      uri: format('%s/items/%s', this.openHabRestUri, item),
+      method: 'GET',
+      headers: {'Accept': 'application/json'}
+    };
+    request(httpOptions, (err, res, body) => {
+      callback({item: item, value: JSON.parse(body), updated: false, err: err || (res.statusCode != HttpStatus.OK ? body : null), res: res});
+    });
+    return item;
+  }
+
   getItemValue(item, callback) {
     console.log('Getting OpenHab item %s value', item);
     let httpOptions = {

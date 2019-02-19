@@ -1,10 +1,22 @@
 {
-	"unauthorized": "You are not authorized to use this service. Your id has been recorded.",
-	"unsupported_message_type": "Nie rozumiem. Jak mogę Ci pomóc?",
-	"openhab_error": "Błąd systemu OpenHab: %s",
-	"wit_error": "Błąd systemu NLP Wit.Ai: %s",
-	"unrecognized_command": "Nie rozumiem. Możesz wyrazić się jaśniej?",
-	"get_value": "Odczytano wartość %s",
-	"get_value_undefined": "Odczytana wartość jest nieustawiona",
-	"set_value": "Wprowadzono nowe ustawienia"
+	"error": {
+		"unauthorized": "You are not authorized to use this service. Your id has been recorded.",
+		"unsupported_message_type": "Nie rozumiem. Jak mogę Ci pomóc?",		
+		"openhab_call_failed": "Błąd systemu OpenHab: %s",
+		"wit_call_failed": "Błąd systemu NLP Wit.Ai: %s"
+	},
+	"message": {
+		"unrecognized_command": "Nie rozumiem. Możesz wyrazić się jaśniej?",
+		"get_value": "Odczytano wartość %s",
+		"get_value_undefined": "Odczytana wartość jest nieustawiona",
+		"set_value": "Wprowadzono nowe ustawienia",
+		"update": "%s zmienił stan na %s"		
+	},
+	"state": {
+		"ERROR": "błąd",
+		"BUSY": "zajęty",
+		"IDLE": "bezczynny",
+		"ON": "włączony",
+		"OFF": "wyłączony"
+	}
 }

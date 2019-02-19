@@ -6,6 +6,7 @@ const
   request = require('request'),
   HttpStatus = require('http-status-codes'),
   utils = require('./utils'),
+  getProperty = require('lodash/get'),
   format = utils.format;
 
 
@@ -16,12 +17,19 @@ class Bot {
     this.appSecretPoof = crypto.createHmac('sha256', config.appSecret).update(config.accessToken).digest('hex');
     this.dictionary = dictionary;
     this.wit = wit;
-    this.app = express().use(bodyParser.json());
+    this.webhookApp = express().use(bodyParser.json());
+    this.httpBindingApp = express().use(bodyParser.json());
   }
 
   start() {
-    this.app.listen(this.config.port, () => console.log('webhook is listening on port %s', this.config.port));
-    this.app.get('/webhook', (req, res) => {
+    this.startWebHookApp();
+    this.startHttpBindingApp();
+  }
+  
+  startWebHookApp() {
+    let self=this;
+    this.webhookApp.listen(this.config.webhookPort, () => console.log('webhook is listening on port %s', this.config.webhookPort));
+    this.webhookApp.get('/webhook', (req, res) => {
       let mode = req.query['hub.mode'];
       let token = req.query['hub.verify_token'];
       let challenge = req.query['hub.challenge'];
@@ -34,8 +42,7 @@ class Bot {
         }
       }
     });
-    let self=this;
-    this.app.post('/webhook', (req, res) => {  
+    this.webhookApp.post('/webhook', (req, res) => {  
       let body = req.body;
       if (body.object === 'page') {
         body.entry.forEach((entry) => {
@@ -52,6 +59,22 @@ class Bot {
     });
   }
 
+  startHttpBindingApp() {
+    let self=this;
+    this.httpBindingApp.listen(this.config.openHabHttpBindingPort, () => console.log('openHab HttpBinding is listening on port %s', this.config.openHabHttpBindingPort));
+    this.httpBindingApp.post('/rest/items/:item/state', (req, res) => {
+      let updatedItem = req.params.item;
+      let updatedState = this.getI18nValue(req.query.state);
+      res.status(HttpStatus.OK).send('EVENT_RECEIVED');
+      this.openHab.getItem(updatedItem,({item, value, updated, err, res}) => {
+        let itemName = err ? updatedItem : value.label;
+        self.config.authorizedSenders.forEach((senderPsid) => {
+          self.sendMessage(senderPsid, self.getResponseString('message.update', itemName, updatedState));
+        });
+      });
+    });
+  }
+
   handleWebhookEvent({sender, message, postback}) {
     let senderPsid = sender ? sender.id : null;
     if (this.config.authorizedSenders.legth > 0 && !this.config.authorizedSenders.includes(senderPsid) && message) {
@@ -64,7 +87,7 @@ class Bot {
   }
 
   handleUnauthorized(senderPsid) {
-    this.sendMessage(senderPsid, this.getResponseString('unauthorized'));  
+    this.sendMessage(senderPsid, this.getResponseString('error.unauthorized'));  
   }
 
   handleMessage(senderPsid, {nlp, text, attachments}) {
@@ -74,27 +97,27 @@ class Bot {
         this.openHab.execute(entities, ({item, value, updated, err, res}) => {
           if (!item) {
             console.error('OpenHab sitemap lookup failed.');
-            self.sendMessage(senderPsid, self.getResponseString('unrecognized_command'));
+            self.sendMessage(senderPsid, self.getResponseString('error.unrecognized_command'));
           } else if (err) {
             console.error('OpenHab error:', err);
-            self.sendMessage(senderPsid, self.getResponseString('openhab_error', err));
+            self.sendMessage(senderPsid, self.getResponseString('error.openhab_call_failed', err));
           } else if (!updated && value) {
             console.log('OpenHab get value completed');
-            self.sendMessage(senderPsid, self.getResponseString('get_value', value));
+            self.sendMessage(senderPsid, self.getResponseString('message.get_value', this.getI18nValue(value)));
           } else if (!updated) {
             console.log('OpenHab get value completed');
-            self.sendMessage(senderPsid, self.getResponseString('get_value_undefined'));
+            self.sendMessage(senderPsid, self.getResponseString('message.get_value_undefined'));
           } else {
             console.log('OpenHab set value completed');
-            self.sendMessage(senderPsid, self.getResponseString('set_value'));
+            self.sendMessage(senderPsid, self.getResponseString('message.set_value'));
           }
         })  
       }).catch((err) => {
         console.error('Wit.Ai error:', err.stack || err);
-        this.sendMessage(senderPsid, this.getResponseString('wit_error', err.stack || err)); 
+        this.sendMessage(senderPsid, this.getResponseString('error.wit_call_failed', err.stack || err)); 
       })
     } else {
-      this.sendMessage(senderPsid, this.getResponseString('unsupported_message_type')); 
+      this.sendMessage(senderPsid, this.getResponseString('error.unsupported_message_type')); 
     } 
   }
 
@@ -104,9 +127,20 @@ class Bot {
 
   getResponseString() {
     let responseId = arguments[0];
-    let string = this.dictionary[responseId];
+    let string = this.getI18nString(responseId);
     let args = Array.from(arguments).slice(1);
     return format.apply(this, [string].concat(args));
+  }
+
+  getI18nValue(value) {
+    let propertyName = format("state.%s", value);
+    let i18nValue = this.getI18nString(propertyName);
+    return i18nValue === propertyName ? value : i18nValue;
+  }
+
+  getI18nString(propertyName) {
+    let i18nString = getProperty(this.dictionary, propertyName);
+    return i18nString ? i18nString : string;
   }
 
   sendMessage(senderPsid, text) {
