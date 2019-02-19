@@ -12,7 +12,6 @@ class OpenHab {
   }
 
   execute(entities, callback) {
-    console.log('Checking entities: %o', entities)
     let item = this.find(this.sitemap, entities, callback);
     if (!item) {
       callback({item: null, value: null, updated: false, err: null, res: null});

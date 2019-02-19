@@ -101,7 +101,7 @@ class Bot {
           } else if (err) {
             console.error('OpenHab error:', err);
             self.sendMessage(senderPsid, self.getResponseString('error.openhab_call_failed', err));
-          } else if (!updated && value) {
+          } else if (!updated && value && value != 'NULL') {
             console.log('OpenHab get value completed');
             self.sendMessage(senderPsid, self.getResponseString('message.get_value', this.getI18nValue(value)));
           } else if (!updated) {
@@ -140,7 +140,7 @@ class Bot {
 
   getI18nString(propertyName) {
     let i18nString = getProperty(this.dictionary, propertyName);
-    return i18nString ? i18nString : string;
+    return i18nString ? i18nString : propertyName;
   }
 
   sendMessage(senderPsid, text) {
