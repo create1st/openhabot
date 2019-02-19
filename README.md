@@ -18,7 +18,7 @@ git clone https://github.com/create1st/openhabot
 ## Configuration
 
 * Create a new Facebook Page for your Bot https://www.facebook.com/pages/create
-* Create a new Facebook App for your Bot https://developers.facebook.com/quickstarts/?platform=web You have to set up Privacy Policy and provide the URL. You cna have one fro free from https://www.iubenda.com
+* Create a new Facebook App for your Bot https://developers.facebook.com/quickstarts/?platform=web You have to set up Privacy Policy and provide the URL. You can have one for free from https://www.iubenda.com
 * Add product Messanger and set up Webhooks with http://serveo.net/ host or create local ssh tunnel. Check http://serveo.net/ for more details how to configure your own domain in secure way. You can use http://ngrok.com or other alternatives
 
 ```
