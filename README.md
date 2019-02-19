@@ -146,8 +146,8 @@ node .
 ```
 
 * Optionally you can configure OpenHaBot to start at system boot
-** Create a startup script in /etc/init.d
-** Updare rc.d
+  * Create a startup script in /etc/init.d
+  * Updare rc.d
 ```
 sudo update-rc.d /etc/init.d/<your script> defaults
 ```
