@@ -9,10 +9,11 @@
 		"unrecognized_command": "Nie rozumiem. Możesz wyrazić się jaśniej?",
 		"get_value": "Odczytano wartość %s",
 		"get_value_undefined": "Odczytana wartość jest nieustawiona",
-		"set_value": "Wprowadzono nowe ustawienia",
+		"set_value": "Przyjęto",
 		"update": "%s zmienił stan na %s"		
 	},
 	"state": {
+		"OFFLINE": "poza zasięgiem",
 		"ERROR": "błąd",
 		"BUSY": "zajęty",
 		"IDLE": "bezczynny",

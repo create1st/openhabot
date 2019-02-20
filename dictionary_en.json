@@ -9,10 +9,11 @@
 		"unrecognized_command": "I don't understand. Please be more precise",
 		"get_value": "The value is %s",
 		"get_value_undefined": "The value is undefined",
-		"set_value": "Tha value has been set",
+		"set_value": "Cofirmed",
 		"update": "%s has changed the state to %s"
 	},
 	"state": {
+		"OFFLINE": "offline",
 		"ERROR": "error",
 		"BUSY": "busy",
 		"IDLE": "idle",

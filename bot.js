@@ -97,7 +97,7 @@ class Bot {
         this.openHab.execute(entities, ({item, value, updated, err, res}) => {
           if (!item) {
             console.error('OpenHab sitemap lookup failed.');
-            self.sendMessage(senderPsid, self.getResponseString('error.unrecognized_command'));
+            self.sendMessage(senderPsid, self.getResponseString('message.unrecognized_command'));
           } else if (err) {
             console.error('OpenHab error:', err);
             self.sendMessage(senderPsid, self.getResponseString('error.openhab_call_failed', err));
@@ -164,7 +164,7 @@ class Bot {
       if (err) {
         console.error('Unable to send message: %s', err);
       } else if (res.statusCode != HttpStatus.OK) {
-        console.log('Failed to send message: %o', res);
+        console.error('Failed to send message: %o', res);
       }
     }); 
   }

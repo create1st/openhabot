@@ -4,6 +4,12 @@ const
   utils = require('./utils'),
   format = utils.format;
 
+const
+  OPENHAB_SET = 'openhab_set',
+  OPENHAB_GET = 'openhab_get',
+  OPENHAB_COMMMAND = 'openhab_command';
+
+
 class OpenHab {
   constructor(config, sitemap) {
     this.openHabRestUri = config.openHabRestUri;
@@ -25,22 +31,56 @@ class OpenHab {
         for (let rule of entity) {
           if (rule.confidence > this.confidenceLevel) {
             console.log('found: %s', nodeName)
-            if (nodeName == 'openhab_set') {
-              let valueEntity = entities.number;
-              if (valueEntity && valueEntity.length == 1) {
-                let value = entities.number[0].value;
+            if (nodeName == OPENHAB_SET) {
+              let value = this.findValue(entities);
+              if (value) {
                 return this.setItemValue(node, value, callback);
               }
-            } else if (nodeName == 'openhab_get') {
+              console.error('Value not found');
+              return null;
+            } else if (nodeName == OPENHAB_GET) {
               return this.getItemValue(node, callback);
             }
             return this.find(node, entities, callback);
           }
         }
+      } else if (nodeName == OPENHAB_COMMMAND)  {
+        console.log('found command');
+        let commandValue = this.findCommandValue(parent.values, entities, parent.mappings)
+        if (commandValue) {
+          return this.setItemValue(node, commandValue.toUpperCase(), callback);          
+        } 
+        console.error('Invalid value');
+        return null;
       }
     };
-    console.log('Not found');
+    console.error('Not found');
     return null;
+  }
+
+  findValue(entities) {
+    let valueEntity = entities.number;
+    if (valueEntity && valueEntity.length == 1) {
+      return valueEntity[0].value;
+    }
+    return null;
+  }
+
+  findCommandValue(values, entities, mappings) {
+    if (values) {
+      for (let value of values) {
+        let valueEntity = entities[value];
+        if (valueEntity && valueEntity.length == 1 && valueEntity[0].confidence > this.confidenceLevel) {
+          return this.getCommandValue(value, mappings);
+        }
+      }      
+    }
+    return null;
+  }
+
+  getCommandValue(commandValue, mappings) {
+    let mappedCommandValue = mappings ? mappings[commandValue] : null;
+    return mappedCommandValue ? mappedCommandValue : commandValue;
   }
 
   getItem(item, callback) {
