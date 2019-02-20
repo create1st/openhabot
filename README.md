@@ -133,7 +133,7 @@ Keys in json are Wit.Ai entities/roles which do structure a look up path for Ope
      [length]: 1 ] }
 ```
 
-* Update your \*.items files and add HTTP Binding channel (Http Binding has to be installed on OpenHab) for the items you want to be notified. It is important to notice that path in HTTP binding URI must match the item name, e.g. item with name **neato_vacuumcleaner_neato_error** uses the channel http://127.0.0.1:1338/rest/items/**neato_vacuumcleaner_neato_error**/state/?state=%2$s
+* Update your \*.items files and add HTTP Binding channel (Http Binding has to be installed on OpenHab) for the items you want to be notified. It is important to notice that path in HTTP binding URI must match the item name, e.g. item with name **neato_vacuumcleaner_neato_error** uses the channel http\://127.0.0.1:1338/rest/items/**neato_vacuumcleaner_neato_error**/state/?state=%2$s
 ```
 Group Vacuum "Odkurzacz" <House> [ "Vacuum" ]
 String neato_vacuumcleaner_neato_state "Bobik status" <text> (Vacuum) {channel="neato:vacuumcleaner:neato:state",http=">[CHANGED:POST:http://127.0.0.1:1338/rest/items/neato_vacuumcleaner_neato_state/state/?state=%2$s]"}
