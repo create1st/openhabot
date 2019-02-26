@@ -19,7 +19,8 @@ git clone https://github.com/create1st/openhabot
 
 * Create a new Facebook Page for your Bot https://www.facebook.com/pages/create
 * Create a new Facebook App for your Bot https://developers.facebook.com/quickstarts/?platform=web You have to set up Privacy Policy and provide the URL. You can have one for free from https://www.iubenda.com
-* in Facebook App add a product *Messanger*  for which you will create a *webhook* once the bot is started for a very first time
+* In Facebook App add a product *Messanger*  for which you will create a *webhook* once the bot is started for a very first time
+* In Facebook App go to *Advanced* and set *Require App Secret*
 * Set up a secured ssh tunnel for your Facebook webhook. You can use http://serveo.net/ Check their web site for more details how to configure your own domain in a secure way. You can use http://ngrok.com or other alternatives as well
 
 ```
@@ -41,7 +42,7 @@ $ ./ssh -R mydomain:80:localhost:1337 serveo.net
 	"verifyToken": "USER_RANDOM_VERIFICATION_TOKEN",
 	"appSecret": "FB_APPLICATION_SECRET",
 	"witAccessToken": "WIT_AI_ACCESS_TOKEN",
-	"authorizedSenders": ["YOUR_FACEBOOK_NUMBER_ID"],
+	"authorizedSenders": ["YOUR_FACEBOOK_PAGE_NUMBER_ID"],
 	"confidenceLevel": "0.77",
 	"language": "en",
 	"openHabRestUri": "http://127.0.0.1:8080/rest",
@@ -173,7 +174,7 @@ String neato_vacuumcleaner_neato_command "Bobik command" <text> (Vacuum) {channe
 ```
 node .
 ```
-* Create Facebook Webhook. **Products** -> **Webhooks** -> **Edit Subscription**. Use your serveo.com webhook tunnel address and **Verify Token** which you have specified in *config.json* as **USER_RANDOM_VERIFICATION_TOKEN**
+* Create Facebook Webhook. **Products** -> **Webhooks** -> **Edit Subscription**. Use your serveo.com webhook tunnel address and **Verify Token** which you have specified in *config.json* as **USER_RANDOM_VERIFICATION_TOKEN** and *Select a page to subscribe your webhook to the page events*
 
 * Optionally you can configure OpenHaBot to start at system boot
   * Create a startup script in /etc/init.d

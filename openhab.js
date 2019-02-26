@@ -48,7 +48,7 @@ class OpenHab {
         console.log('found command');
         let commandValue = this.findCommandValue(parent.values, entities, parent.mappings)
         if (commandValue) {
-          return this.setItemValue(node, commandValue.toUpperCase(), callback);          
+          return this.sendItemCommand(node, commandValue.toUpperCase(), callback);          
         } 
         console.error('Invalid value');
         return null;
@@ -83,6 +83,23 @@ class OpenHab {
     return mappedCommandValue ? mappedCommandValue : commandValue;
   }
 
+  sendItemCommand(item, value, callback) {
+    console.log('Sending OpenHab item %s command %s', item, value);
+    let httpOptions = {
+      uri: format('%s/items/%s', this.openHabRestUri, item),
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain',
+        'Accept': 'application/json'
+      },
+      body: value.toString()
+    };
+    request(httpOptions, (err, res, body) => {
+      callback({item: item, value: value, updated: (err == null), err: err || (res.statusCode != HttpStatus.ACCEPTED ? body : null), res: res});
+    });
+    return item;
+  }
+
   getItem(item, callback) {
     console.log('Getting OpenHab item %s', item);
     let httpOptions = {
@@ -113,7 +130,7 @@ class OpenHab {
     console.log('Setting OpenHab item %s value %s', item, value);
     let httpOptions = {
       uri: format('%s/items/%s/state', this.openHabRestUri, item),
-      method: 'POST',
+      method: 'PUT',
       headers: {
         'Content-Type': 'text/plain',
         'Accept': 'application/json'

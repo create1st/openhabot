@@ -9,6 +9,21 @@ const
   getProperty = require('lodash/get'),
   format = utils.format;
 
+const
+  RESPONSE_EVENT_RECEIVED = 'EVENT_RECEIVED',
+  RESPONSE_UPDATED = 'UPDATED',
+  MESSAGE_BOT_STARTED = 'message.bot_started',
+  MESSAGE_CONFIG_REFRESH = 'message.config_refresh',
+  MESSAGE_UPDATE = 'message.update',
+  MESSAGE_UNRECOGNIZED_COMMAND = 'message.unrecognized_command',
+  MESSAGE_GET_VALUE = 'message.get_value',
+  MESSAGE_GET_VALUE_UNDEFINED = 'message.get_value_undefined',
+  MESSAGE_SET_VALUE = 'message.set_value',
+  ERROR_OPENHAB_CALL_FAILED = 'error.openhab_call_failed',
+  ERROR_WIT_CALL_FAILED = 'error.wit_call_failed',
+  ERROR_UNSUPPORTED_MESSAGE_TYPE = 'error.unsupported_message_type',
+  ERROR_UNAUTHORIZED = 'error.unauthorized';
+
 
 class Bot {
   constructor(config, dictionary, wit, openHab) {
@@ -24,6 +39,7 @@ class Bot {
   start() {
     this.startWebHookApp();
     this.startHttpBindingApp();
+    this.notifyAll(this.getResponseString(MESSAGE_BOT_STARTED));
   }
   
   startWebHookApp() {
@@ -35,7 +51,7 @@ class Bot {
       let challenge = req.query['hub.challenge'];
       if (mode && token) {
         if (mode === 'subscribe' && token === this.config.verifyToken) {
-          console.log('WEBHOOK_VERIFIED');
+          console.log('Webhook authorized by Facebook application');
           res.status(HttpStatus.OK).send(challenge);
         } else {
           res.sendStatus(HttpStatus.FORBIDDEN);      
@@ -52,7 +68,7 @@ class Bot {
             }
           });
         });
-        res.status(HttpStatus.OK).send('EVENT_RECEIVED');
+        res.status(HttpStatus.OK).send(RESPONSE_EVENT_RECEIVED);
       } else {
         res.sendStatus(HttpStatus.NOT_FOUND);
       }
@@ -65,13 +81,19 @@ class Bot {
     this.httpBindingApp.post('/rest/items/:item/state', (req, res) => {
       let updatedItem = req.params.item;
       let updatedState = this.getI18nValue(req.query.state);
-      res.status(HttpStatus.OK).send('EVENT_RECEIVED');
+      res.status(HttpStatus.OK).send(RESPONSE_EVENT_RECEIVED);
       this.openHab.getItem(updatedItem,({item, value, updated, err, res}) => {
         let itemName = err ? updatedItem : value.label;
-        self.config.authorizedSenders.forEach((senderPsid) => {
-          self.sendMessage(senderPsid, self.getResponseString('message.update', itemName, updatedState));
-        });
+        this.notifyAll(self.getResponseString(MESSAGE_UPDATE, itemName, updatedState));
       });
+    });
+    this.httpBindingApp.post('/rest/system/config/reload', (req, res) => {
+      console.log('Refreshing configuration');
+      this.config.reload();
+      this.dictionary.reload();
+      this.openHab.sitemap.reload();
+      res.status(HttpStatus.OK).send(RESPONSE_UPDATED);
+      this.notifyAll(self.getResponseString(MESSAGE_CONFIG_REFRESH));
     });
   }
 
@@ -87,7 +109,7 @@ class Bot {
   }
 
   handleUnauthorized(senderPsid) {
-    this.sendMessage(senderPsid, this.getResponseString('error.unauthorized', senderPsid));  
+    this.sendMessage(senderPsid, this.getResponseString(ERROR_UNAUTHORIZED, senderPsid));  
   }
 
   handleMessage(senderPsid, {nlp, text, attachments}) {
@@ -97,32 +119,39 @@ class Bot {
         this.openHab.execute(entities, ({item, value, updated, err, res}) => {
           if (!item) {
             console.error('OpenHab sitemap lookup failed.');
-            self.sendMessage(senderPsid, self.getResponseString('message.unrecognized_command'));
+            self.sendMessage(senderPsid, self.getResponseString(MESSAGE_UNRECOGNIZED_COMMAND));
           } else if (err) {
             console.error('OpenHab error:', err);
-            self.sendMessage(senderPsid, self.getResponseString('error.openhab_call_failed', err));
+            self.sendMessage(senderPsid, self.getResponseString(ERROR_OPENHAB_CALL_FAILED, err));
           } else if (!updated && value && value != 'NULL') {
             console.log('OpenHab get value completed');
-            self.sendMessage(senderPsid, self.getResponseString('message.get_value', this.getI18nValue(value)));
+            self.sendMessage(senderPsid, self.getResponseString(MESSAGE_GET_VALUE, this.getI18nValue(value)));
           } else if (!updated) {
             console.log('OpenHab get value completed');
-            self.sendMessage(senderPsid, self.getResponseString('message.get_value_undefined'));
+            self.sendMessage(senderPsid, self.getResponseString(MESSAGE_GET_VALUE_UNDEFINED));
           } else {
             console.log('OpenHab set value completed');
-            self.sendMessage(senderPsid, self.getResponseString('message.set_value'));
+            self.sendMessage(senderPsid, self.getResponseString(MESSAGE_SET_VALUE));
           }
         })  
       }).catch((err) => {
         console.error('Wit.Ai error:', err.stack || err);
-        this.sendMessage(senderPsid, this.getResponseString('error.wit_call_failed', err.stack || err)); 
+        this.sendMessage(senderPsid, this.getResponseString(ERROR_WIT_CALL_FAILED, err.stack || err)); 
       })
     } else {
-      this.sendMessage(senderPsid, this.getResponseString('error.unsupported_message_type')); 
+      this.sendMessage(senderPsid, this.getResponseString(ERROR_UNSUPPORTED_MESSAGE_TYPE)); 
     } 
   }
 
   handlePostback(senderPsid, received_postback) {
 
+  }
+
+  notifyAll(message) {
+    let self = this;
+    this.config.authorizedSenders.forEach((senderPsid) => {
+      self.sendMessage(senderPsid, message);
+    });
   }
 
   getResponseString() {
@@ -154,17 +183,20 @@ class Bot {
         "id": senderPsid
       },
       "message": response
-    }
-    request({
+    };
+    let httpOptions = {
       "uri": "https://graph.facebook.com/v2.6/me/messages",
       "qs": { "access_token": this.config.accessToken },
       "method": "POST",
       "json": requestBody
-    }, (err, res, body) => {
+    };
+    request(httpOptions, (err, res, body) => {
       if (err) {
         console.error('Unable to send message: %s', err);
+        console.error('Failed request: %o', httpOptions);
       } else if (res.statusCode != HttpStatus.OK) {
         console.error('Failed to send message: %o', res);
+        console.error('Failed request: %o', httpOptions);
       }
     }); 
   }

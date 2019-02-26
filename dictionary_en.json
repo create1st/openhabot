@@ -10,7 +10,9 @@
 		"get_value": "The value is %s",
 		"get_value_undefined": "The value is undefined",
 		"set_value": "Cofirmed",
-		"update": "%s has changed the state to %s"
+		"update": "%s has changed the state to %s",
+		"config_refresh": "Configuration refresh operation has been completed succesfully",
+		"bot_started": "Started OpenHaBot"
 	},
 	"state": {
 		"OFFLINE": "offline",

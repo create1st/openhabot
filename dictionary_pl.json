@@ -10,7 +10,9 @@
 		"get_value": "Odczytano wartość %s",
 		"get_value_undefined": "Odczytana wartość jest nieustawiona",
 		"set_value": "Przyjęto",
-		"update": "%s zmienił stan na %s"		
+		"update": "%s zmienił stan na %s",
+		"config_refresh": "Aktualizacja konfiguracji zakończyła się pomyślnie",
+		"bot_started": "OpenHaBot został uruchomiony"
 	},
 	"state": {
 		"OFFLINE": "poza zasięgiem",
