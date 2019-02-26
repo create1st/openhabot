@@ -14,6 +14,7 @@
 	},
 	"state": {
 		"OFFLINE": "poza zasięgiem",
+		"dustbin_missing": "wyciągnięto pojemnik",
 		"ERROR": "błąd",
 		"BUSY": "zajęty",
 		"IDLE": "bezczynny",

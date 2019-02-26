@@ -113,7 +113,7 @@ class OpenHab {
     console.log('Setting OpenHab item %s value %s', item, value);
     let httpOptions = {
       uri: format('%s/items/%s/state', this.openHabRestUri, item),
-      method: 'PUT',
+      method: 'POST',
       headers: {
         'Content-Type': 'text/plain',
         'Accept': 'application/json'

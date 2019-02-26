@@ -10,7 +10,7 @@ This is NodeJS based implementation of openHAB Bot for Facebook Messenger
 
 ## Installation
 ```
-npm install express body-parser node-wit http-status-codes lodash --save
+sudo npm install express body-parser node-wit http-status-codes lodash --save
 
 git clone https://github.com/create1st/openhabot
 ```
@@ -179,5 +179,5 @@ node .
   * Create a startup script in /etc/init.d
   * Updare rc.d
 ```
-sudo update-rc.d /etc/init.d/<your script> defaults
+sudo update-rc.d <your script> defaults
 ```
