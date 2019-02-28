@@ -77,16 +77,20 @@ class Bot {
   }
 
   startHttpBindingApp() {
-    let self=this;
     this.httpBindingApp.listen(this.config.openHabHttpBindingPort, () => console.log('openHab HttpBinding is listening on port %s', this.config.openHabHttpBindingPort));
     this.httpBindingApp.post('/rest/items/:item/state', (req, res) => {
-      let updatedItem = req.params.item;
-      let updatedState = this.getI18nValue(req.query.state);
       res.status(HttpStatus.OK).send(RESPONSE_EVENT_RECEIVED);
-      this.openHab.getItem(updatedItem,({item, value, updated, err, res}) => {
-        let itemName = err ? updatedItem : value.label;
-        this.notifyAll(self.getResponseString(MESSAGE_UPDATE, itemName, updatedState));
-      });
+      let updatedItem = req.params.item;
+      let state = req.query.state;
+      if (state && state.match(IMAGE_BASE64)) {
+        this.notifyAllWithImageBase64(state);
+      } else {
+        let i18nState = this.getI18nValue(state);
+        this.openHab.getItem(updatedItem, ({item, value, updated, err, res}) => {
+          let itemName = err ? updatedItem : value.label;
+          this.notifyAll(this.getResponseString(MESSAGE_UPDATE, itemName, i18nState));
+        });
+      }
     });
     this.httpBindingApp.post('/rest/system/config/reload', (req, res) => {
       console.log('Refreshing configuration');
@@ -94,7 +98,7 @@ class Bot {
       this.dictionary.reload();
       this.openHab.sitemap.reload();
       res.status(HttpStatus.OK).send(RESPONSE_UPDATED);
-      this.notifyAll(self.getResponseString(MESSAGE_CONFIG_REFRESH));
+      this.notifyAll(this.getResponseString(MESSAGE_CONFIG_REFRESH));
     });
   }
 
@@ -149,6 +153,13 @@ class Bot {
 
   handlePostback(senderPsid, received_postback) {
 
+  }
+
+  notifyAllWithImageBase64(imageBase64) {
+    let self = this;
+    this.config.authorizedSenders.forEach((senderPsid) => {
+      self.sendImageBase64(senderPsid, imageBase64);
+    });
   }
 
   notifyAll(message) {
