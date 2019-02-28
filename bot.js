@@ -10,6 +10,7 @@ const
   format = utils.format;
 
 const
+  IMAGE_BASE64 = new RegExp('^data:(image\/(.*));base64,(.*)$'),
   RESPONSE_EVENT_RECEIVED = 'EVENT_RECEIVED',
   RESPONSE_UPDATED = 'UPDATED',
   MESSAGE_BOT_STARTED = 'message.bot_started',
@@ -123,12 +124,15 @@ class Bot {
           } else if (err) {
             console.error('OpenHab error:', err);
             self.sendMessage(senderPsid, self.getResponseString(ERROR_OPENHAB_CALL_FAILED, err));
-          } else if (!updated && value && value != 'NULL') {
-            console.log('OpenHab get value completed');
-            self.sendMessage(senderPsid, self.getResponseString(MESSAGE_GET_VALUE, this.getI18nValue(value)));
           } else if (!updated) {
             console.log('OpenHab get value completed');
-            self.sendMessage(senderPsid, self.getResponseString(MESSAGE_GET_VALUE_UNDEFINED));
+            if (value == null || value == 'NULL') {
+              self.sendMessage(senderPsid, self.getResponseString(MESSAGE_GET_VALUE_UNDEFINED));            
+            } else if (value.match(IMAGE_BASE64)) {
+              self.sendImageBase64(senderPsid, value);
+            } else {
+              self.sendMessage(senderPsid, self.getResponseString(MESSAGE_GET_VALUE, this.getI18nValue(value)));              
+            }
           } else {
             console.log('OpenHab set value completed');
             self.sendMessage(senderPsid, self.getResponseString(MESSAGE_SET_VALUE));
@@ -173,16 +177,46 @@ class Bot {
   }
 
   sendMessage(senderPsid, text) {
-    this.callSendAPI(senderPsid, {"text": text}); 
+    this.callSendTextAPI(senderPsid, text); 
   }
 
-  callSendAPI(senderPsid, response) {
+  sendImageBase64(senderPsid, imageBase64) {
+    let imageData = imageBase64.match(IMAGE_BASE64, 'i');
+    let contentType = imageData[1];
+    let imageType = imageData[2];
+    let decodedImage = Buffer.from(imageData[3], 'base64');
+    let filename = format("image.%s", imageType);
+    this.callSendAttachmentAPI(senderPsid, decodedImage, contentType, filename); 
+  }
+
+  callSendAttachmentAPI(senderPsid, buffer, contentType, filename) {
+    let assetType = contentType.split('/')[0];
+    let httpOptions = {
+      "uri": "https://graph.facebook.com/v2.6/me/messages",
+      "qs": { "access_token": this.config.accessToken },
+      "method": "POST"
+    };
+    var postRequest = request(httpOptions,  (err, res, body) => {
+      if (err || res.statusCode != HttpStatus.OK) {
+        console.error('Unable to send message: %s', JSON.stringify(err));
+        console.error('Failed request: %s', JSON.stringify(httpOptions));
+      } else if (body) {
+        let attachment = JSON.parse(body);
+        console.log("Sent attachment with id: %s", attachment.attachment_id);
+      }
+    });
+    var form = postRequest.form();
+    form.append('appsecret_proof', this.appSecretPoof);
+    form.append('recipient', format("{ \"id\": \"%s\"}", senderPsid));
+    form.append('message', format("{ \"attachment\": { \"type\": \"%s\", \"payload\": { \"is_reusable\": true}}}", assetType));
+    form.append('filedata', buffer, { filename: filename, contentType: contentType });
+  }
+
+  callSendTextAPI(senderPsid, text) {
     let requestBody = {
-    "appsecret_proof": this.appSecretPoof,
-      "recipient": {
-        "id": senderPsid
-      },
-      "message": response
+      "appsecret_proof": this.appSecretPoof,
+      "recipient": { "id": senderPsid },
+      "message": { "text": text }
     };
     let httpOptions = {
       "uri": "https://graph.facebook.com/v2.6/me/messages",
@@ -191,12 +225,9 @@ class Bot {
       "json": requestBody
     };
     request(httpOptions, (err, res, body) => {
-      if (err) {
-        console.error('Unable to send message: %s', err);
-        console.error('Failed request: %o', httpOptions);
-      } else if (res.statusCode != HttpStatus.OK) {
-        console.error('Failed to send message: %o', res);
-        console.error('Failed request: %o', httpOptions);
+      if (err || res.statusCode != HttpStatus.OK) {
+        console.error('Unable to send message: %s', JSON.stringify(err));
+        console.error('Failed request: %', JSON.stringify(httpOptions));
       }
     }); 
   }
