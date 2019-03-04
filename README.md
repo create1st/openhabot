@@ -50,64 +50,128 @@ $ ./ssh -R mydomain:80:localhost:1337 serveo.net
 }
 ```
 * Create Wit.Ai account
-* Create Wit.Ai entities and roles https://wit.ai/docs/quickstart (you can find my entities created for polish language at https://wit.ai/create1st/OpenHaBot/entities). Although you can use only entities, it is recommended to use both entities and roles. Entities does specify the group, e.g. *openhab_location* and role does specify particular real world object, e.g. *openhab_location_sleeping_room*. You may decide to use *openhab_location* and *openhab_settings* for entities or decide to use anything you like, however you have to use *openhab_set* and *openhab_get* for definition of the keywords related to querying item value and setting a new one. Setting a value is limited to the numbers which shall be mapped to *wit/number*. All the states related to toggling a switch or execution a command are mapped to *openhab_operation* and state. To have better understanding check next section related to *sitemap.json* definition
-* Create *sitemap.json* to map the items you want to control with OpenHaBot. The mapping has to follow the schema: **location** or **thing** (Wit.Ai rule name) -> **setting** (Wit.Ai rule name) -> **operation** (get_value, set_value or openhab_command) which maps to particular OpenHab item.
-  * **get_value** shall be mapped to particular item keyword in Wit.Ai. This is to read item state, e.g. **what is the temperature in the living room?**
-  * **set_value** shall be mapped to particular item keyword in Wit.Ai. This is to set **numeric** item state, **set the temperature in the living room to 23 degrees**
-  * Setting the state of items of type string, switch, etc. is achieved via **openhab_command** which does not have direct mapping in Wit.Ai. What is mapped is the location and/or thing symbolic name, the operation (e.g. "cleaning") and desired state (e.g. start/stop/on/off). It is imporatant to notice that some particular states which are defined by vendor do not match language semantics, e.g. Neato robots have command channel which do accepts states: *clean*, *stop*, *pause*, *resume*, *dock*. In this example we do have two language specific issues. First is state *clean* which for "cleaning" operation means nothing. We do not want to have commands like **neato, clean cleaning**. Meaningful from language point of view are commands like: **neato, start cleaning**, **neato, stop cleaning**, etc. So first thing we need to do is to create mappings which will recognize *start* and transforms it to *clean* which is understood by OpenHab Neato binding. Second issue with Neato accepted states is state *dock*. It is unrelated to cleaning operation. We do not want to have constructions like **neato, clean the dock**. Therefore we should create separate operation "return" for the same command itemwhich will accept the state *dock*, so we can say **neato, return to the dock**. To ilustrate the problem and possible solution check Alexa skills and command examples https://www.amazon.com/Neato-Robotics/dp/B01MXI58Y7?tag=hawk-future-20&ascsubtag=tomsguide
+* Create Wit.Ai entities following Wit.Ai manual at https://wit.ai/docs/quickstart (you can find my entities created for polish language at https://wit.ai/create1st/OpenHaBot/entities). Entities does specify the group, e.g. *openhab_locations* and entity value does specify particular real world object, e.g. *sleeping_room*. You may decide to use *openhab_locations* and *openhab_settings* for entities or decide to use anything you like, however you have to use *set* and *get* for definition of the keywords related to querying item value and setting a new one. Setting a value is limited to the numbers which shall be mapped to *wit/number*. All the states related to toggling a switch or execution of a command are mapped to *openhab_state* entity. To have better understanding check next section related to *sitemap.json* definition
+* Create *sitemap.json* to map the items you want to control with OpenHaBot. The mapping has to follow the schema: **openhab_locations** or **openhab_thing** -> Wit.Ai value -> **openhab_settings** -> Wit.Ai value -> **openhab_operations** -> Wit.Ai value (get, set or command) which maps to particular OpenHab item.
+  * **get** shall be mapped to particular item value in Wit.Ai. This is to read item state, e.g. **what is the temperature in the living room?**
+  * **set** shall be mapped to particular item value in Wit.Ai. This is to set **numeric** item state, **set the temperature in the living room to 23 degrees**
+  * Setting the state of items of type string, switch, etc. is achieved via **command** which does not have direct mapping in Wit.Ai. What is mapped is the location and/or thing symbolic name, the operation (e.g. "cleaning") and desired state (e.g. start/stop/on/off). It is imporatant to notice that some particular states which are defined by vendor do not match language semantics, e.g. Neato robots have command channel which do accepts states: *clean*, *stop*, *pause*, *resume*, *dock*. In this example we do have two language specific issues. First is state *clean* which for "cleaning" operation means nothing. We do not want to have commands like **neato, clean cleaning**. Meaningful from language point of view are commands like: **neato, start cleaning**, **neato, stop cleaning**, etc. So first thing we need to do is to create mappings which will recognize *start* and transforms it to *clean* which is understood by OpenHab Neato binding. Second issue with Neato accepted states is state *dock*. It is unrelated to cleaning operation. We do not want to have constructions like **neato, clean the dock**. Therefore we should create separate operation "return" for the same command itemwhich will accept the state *dock*, so we can say **neato, return to the dock**. To ilustrate the problem and possible solution check Alexa skills and command examples https://www.amazon.com/Neato-Robotics/dp/B01MXI58Y7?tag=hawk-future-20&ascsubtag=tomsguide
   Please check also sample *sitemap.json*
 ```json
-{
-	"openhab_location_workplace_room": {
-		"openhab_settings_temperature": {
-			"openhab_set": "zwave_device_id_node2_thermostat_setpoint_heating"
-		}
-	},
-	"openhab_location_bathroom_first_floor": {
-		"openhab_settings_temperature": {
-			"openhab_set": "zwave_device_id_node3_thermostat_setpoint_heating"
-		}
-	},
-	"openhab_location_sleeping_room": {
-		"openhab_settings_temperature": {
-			"openhab_get": "mihome_sensor_ht_1_temperature",
-			"openhab_set": "zwave_device_id_node4_thermostat_setpoint_heating"
-		},
-		"openhab_settings_humidity": {
-			"openhab_get": "mihome_sensor_ht_1_humidity"
-		}
-	},
-	"openhab_location_living_room": {
-		"openhab_settings_temperature": {
-			"openhab_get": "mihome_sensor_ht_2_temperature",
-			"openhab_set": "zwave_device_id_node5_thermostat_setpoint_heating"
-		},
-		"openhab_settings_humidity": {
-			"openhab_get": "mihome_sensor_ht_2_humidity"
-		}	
-	},
-	"openhab_location_studio_room": {
-		"openhab_settings_temperature": {
-			"openhab_set": "zwave_device_id_node6_thermostat_setpoint_heating"
-		}
-	},
-	"openhab_location_corridor": {
-		"openhab_settings_light": {
-			"openhab_command": "mihome_gateway_1_lightSwitch",
-			"values": ["on", "off"]
-		}
-	},
-	"openhab_thing_neato": {
-		"openhab_operation_cleaning": {
-			"openhab_command": "neato_vacuumcleaner_neato_command",
-			"values": ["start", "stop", "pause", "resume"],
-			"mappings": {
-				"start": "clean"
+{	
+	"openhab_locations" : {
+		"workplace_room": {
+			"openhab_settings": {
+				"temperature": {
+					"openhab_operations": {
+						"set": "zwave_device_dev_node2_thermostat_setpoint_heating"
+					}
+				}				
 			}
 		},
-		"openhab_operation_return": {
-			"openhab_command": "neato_vacuumcleaner_neato_command",
-			"values": ["dock"]
+		"bathroom": {
+			"openhab_settings": {
+				"temperature": {
+					"openhab_operations": {
+						"set": "zwave_device_dev_node3_thermostat_setpoint_heating"					
+					}
+				}
+			}
+		},
+		"sleeping_room": {
+			"openhab_settings": {
+				"temperature": {
+					"openhab_operations": {
+						"get": {
+							"openhab_data_item": {
+								"graph": "grafana_temperature_measure_sypialnia_image"
+							},
+							"default": "mihome_sensor_ht_node1_temperature"
+						},
+						"set": "zwave_device_dev_node4_thermostat_setpoint_heating"						
+					}
+				},
+				"humidity": {
+					"openhab_operations": {
+						"get": "mihome_sensor_ht_node1_humidity"						
+					}
+				}				
+			}
+		},
+		"living_room": {
+			"openhab_settings": {
+				"temperature": {
+					"openhab_operations": {
+						"get": {
+							"openhab_data_item": {
+								"graph": "grafana_temperature_measure_salon_image"
+							},
+							"default": "mihome_sensor_ht_node2_temperature"
+						},
+						"set": "zwave_device_dev_node5_thermostat_setpoint_heating"
+					}
+				},
+				"humidity": {
+					"openhab_operations": {
+						"get": "mihome_sensor_ht_node2_humidity"
+					}
+				}
+			}
+		},
+		"studio": {
+			"openhab_settings": {
+				"temperature": {
+					"openhab_operations": {
+						"set": "zwave_device_dev_node6_thermostat_setpoint_heating"
+					}
+				}				
+			}
+		},
+		"corridor": {
+			"openhab_settings": {
+				"light": {
+					"command": "mihome_gateway_dev_lightSwitch",
+					"values": ["on", "off"]
+				}
+			}
+		}
+	},
+	"openhab_thing": {
+		"neato": {
+			"openhab_operations": {
+				"cleaning": {
+					"command": "neato_vacuumcleaner_robot_command",
+					"values": ["start", "stop", "pause", "resume"],
+					"mappings": {
+						"start": "clean"
+					}
+				},
+				"return": {
+					"command": "neato_vacuumcleaner_robot_command",
+					"values": ["dock"]
+				}	
+			}		
+		},
+		"OpenHaBot": {
+			"openhab_operations": {
+				"update": {
+					"command": "bot_update_config_command",
+					"values": ["config"],
+					"mappings": {
+						"config": "on"
+					}
+				}				
+			}
+		},
+		"openHAB": {
+			"openhab_operations": {
+				"update": {
+					"command": "system_update_config_command",
+					"values": ["config"],
+					"mappings": {
+						"config": "on"
+					}
+				}				
+			}
 		}
 	}
 }
@@ -115,22 +179,21 @@ $ ./ssh -R mydomain:80:localhost:1337 serveo.net
 Keys in json are Wit.Ai entities/roles which do structure a look up path for OpenHab item. Example outcome from Wit.Ai look up can be like:
 
 ```javascript
-{ openhab_set:
-   [ { confidence: 0.77588039802196, value: 'ustaw', type: 'value' },
+{ openhab_operations:
+   [ { confidence: 0.99708430836861, value: 'get', type: 'value' },
      [length]: 1 ],
-  openhab_settings_temperature:
-   [ { confidence: 0.84355505856879,
-       value: 'temperaturę',
+  openhab_data_item:
+   [ { confidence: 0.98959600983719, value: 'graph', type: 'value' },
+     [length]: 1 ],
+  openhab_settings:
+   [ { confidence: 0.94957579274518,
+       value: 'temperature',
        type: 'value' },
      [length]: 1 ],
-  openhab_location_sleeping_room:
-   [ { confidence: 0.77086080572739,
-       value: 'sypialni',
+  openhab_locations:
+   [ { confidence: 0.9959712447152,
+       value: 'living_room',
        type: 'value' },
-     [length]: 1 ],
-  number: [ { confidence: 1, value: 23, type: 'value' }, [length]: 1 ],
-  openhab_unit_degree:
-   [ { confidence: 0.61746979290351, value: 'stopnie', type: 'value' },
      [length]: 1 ] }
 ```
 
