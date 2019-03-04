@@ -104,7 +104,7 @@ class Bot {
 
   handleWebhookEvent({sender, message, postback}) {
     let senderPsid = sender ? sender.id : null;
-    if (this.config.authorizedSenders.legth > 0 && !this.config.authorizedSenders.includes(senderPsid) && message) {
+    if (this.config.authorizedSenders.length > 0 && !this.config.authorizedSenders.includes(senderPsid)) {
       this.handleUnauthorized(senderPsid);
     } else if (message) {
       this.handleMessage(senderPsid, message);
@@ -238,7 +238,7 @@ class Bot {
     request(httpOptions, (err, res, body) => {
       if (err || res.statusCode != HttpStatus.OK) {
         console.error('Unable to send message: %s', JSON.stringify(err));
-        console.error('Failed request: %', JSON.stringify(httpOptions));
+        console.error('Failed request: %s', JSON.stringify(httpOptions));
       }
     }); 
   }

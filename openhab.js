@@ -5,9 +5,12 @@ const
   format = utils.format;
 
 const
-  OPENHAB_SET = 'openhab_set',
-  OPENHAB_GET = 'openhab_get',
-  OPENHAB_COMMMAND = 'openhab_command';
+  OPENHAB_SET = 'set',
+  OPENHAB_GET = 'get',
+  OPENHAB_DATA_ITEM = 'openhab_data_item'
+  OPENHAB_DEFAULT = 'default',
+  OPENHAB_STATE = 'openhab_state',
+  OPENHAB_COMMMAND = 'command';
 
 
 class OpenHab {
@@ -28,25 +31,38 @@ class OpenHab {
     for (const [nodeName, node] of Object.entries(parent)) {
       let entity = entities[nodeName];
       if (entity) {
-        for (let rule of entity) {
-          if (rule.confidence > this.confidenceLevel) {
-            console.log('found: %s', nodeName)
-            if (nodeName == OPENHAB_SET) {
+        for (let entityEntry of entity) {
+          if (entityEntry.confidence > this.confidenceLevel) {
+            let entityEntryValue = entityEntry.value;
+            console.log('found: %s, %s', nodeName, entityEntryValue);
+            let valueNode = node[entityEntryValue];
+            if (valueNode == null) {
+              console.error('Item not found');
+              return null;
+            } else if (entityEntryValue == OPENHAB_SET) {
               let value = this.findValue(entities);
               if (value) {
-                return this.setItemValue(node, value, callback);
+                return this.setItemValue(valueNode, value, callback);
               }
               console.error('Value not found');
               return null;
-            } else if (nodeName == OPENHAB_GET) {
-              return this.getItemValue(node, callback);
+            } else if (entityEntryValue == OPENHAB_GET) {
+              if (typeof valueNode == 'object') {
+                let dataItem = this.findDataItem(entities, valueNode);
+                if (dataItem) {
+                  return this.getItemValue(dataItem, callback);                  
+                }
+                console.error('No data item found')
+                return null;
+              }
+              return this.getItemValue(valueNode, callback);
             }
-            return this.find(node, entities, callback);
+            return this.find(valueNode, entities, callback);
           }
         }
       } else if (nodeName == OPENHAB_COMMMAND)  {
         console.log('found command');
-        let commandValue = this.findCommandValue(parent.values, entities, parent.mappings)
+        let commandValue = this.findCommandValue(parent.values, entities, parent.mappings) //entities['openhab_state']
         if (commandValue) {
           return this.sendItemCommand(node, commandValue.toUpperCase(), callback);          
         } 
@@ -55,6 +71,17 @@ class OpenHab {
       }
     };
     console.error('Not found');
+    return null;
+  }
+
+  findDataItem(entities, valueNode) {
+    let dataItemEntity = entities[OPENHAB_DATA_ITEM];
+    if (dataItemEntity == null) {
+      return valueNode[OPENHAB_DEFAULT];
+    } else if (dataItemEntity && dataItemEntity.length == 1) {
+      let dataItem = dataItemEntity[0].value;
+      return valueNode[OPENHAB_DATA_ITEM][dataItem];
+    }
     return null;
   }
 
@@ -67,10 +94,11 @@ class OpenHab {
   }
 
   findCommandValue(values, entities, mappings) {
-    if (values) {
+    let stateEntity = entities[OPENHAB_STATE];
+    if (values && stateEntity && stateEntity.length == 1 && stateEntity[0].confidence > this.confidenceLevel) {
+      let stateEntityValue = stateEntity[0].value;
       for (let value of values) {
-        let valueEntity = entities[value];
-        if (valueEntity && valueEntity.length == 1 && valueEntity[0].confidence > this.confidenceLevel) {
+        if (stateEntityValue == value) {
           return this.getCommandValue(value, mappings);
         }
       }      
