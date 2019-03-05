@@ -96,7 +96,7 @@ class Bot {
       console.log('Refreshing configuration');
       this.config.reload();
       this.dictionary.reload();
-      this.openHab.sitemap.reload();
+      this.openHab.reloadConfigs();
       res.status(HttpStatus.OK).send(RESPONSE_UPDATED);
       this.notifyAll(this.getResponseString(MESSAGE_CONFIG_REFRESH));
     });
@@ -125,6 +125,8 @@ class Bot {
           if (!item) {
             console.error('OpenHab sitemap lookup failed.');
             self.sendMessage(senderPsid, self.getResponseString(MESSAGE_UNRECOGNIZED_COMMAND));
+          } if (typeof item == 'object') {
+            console.log('OpenHab query not completed: %o', item);
           } else if (err) {
             console.error('OpenHab error:', err);
             self.sendMessage(senderPsid, self.getResponseString(ERROR_OPENHAB_CALL_FAILED, err));

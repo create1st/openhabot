@@ -6,12 +6,12 @@ const
 
 class Config {
   constructor(configFile) {
-    this.configFile = configFile;
+    this.getConfigFile = function() { return configFile; }
     this.reload();
   }
 
   reload() {
-    let content = fs.readFileSync(this.configFile, 'utf8')
+    let content = fs.readFileSync(this.getConfigFile(), 'utf8')
     let config = JSON.parse(content);
     for (let property in this) {
       if (property != CONFIG_FILE) {

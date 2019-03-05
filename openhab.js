@@ -5,26 +5,129 @@ const
   format = utils.format;
 
 const
+  OPENHAB_VALUE = 'number',
+  OPENHAB_UNIT = 'openhab_unit',
   OPENHAB_SET = 'set',
   OPENHAB_GET = 'get',
   OPENHAB_DATA_ITEM = 'openhab_data_item'
-  OPENHAB_DEFAULT = 'default',
+  OPENHAB_DEFAULT_ITEM = 'default',
   OPENHAB_STATE = 'openhab_state',
-  OPENHAB_COMMMAND = 'command';
+  OPENHAB_COMMMAND = 'command',
+  OPENHAB_POSTBACK_REQUEST = 'posback_request';
 
 
 class OpenHab {
   constructor(config, sitemap) {
-    this.openHabRestUri = config.openHabRestUri;
-    this.confidenceLevel = parseFloat(config.confidenceLevel);
+    this.config = config;
     this.sitemap = sitemap;
+    this.initialize();
+  }
+
+  initialize() {
+    this.openHabRestUri = this.config.openHabRestUri;
+    this.confidenceLevel = parseFloat(this.config.confidenceLevel);
+  }
+
+  reloadConfigs() {
+    this.config.reload();
+    this.sitemap.reload();
+    this.initialize();
   }
 
   execute(entities, callback) {
-    let item = this.find(this.sitemap, entities, callback);
-    if (!item) {
-      callback({item: null, value: null, updated: false, err: null, res: null});
+    //let item = this.find(this.sitemap, entities, callback);
+    // if (!item) {
+    //   callback({item: null, value: null, updated: false, err: null, res: null});
+    // }
+    let confidentEntities = this.getConfidentEntities(entities);
+    console.log("confident entities %o", confidentEntities);
+    let possibleOptions = this.findPossibleOptions(this.sitemap, confidentEntities, []);
+    console.log("Result: %o", possibleOptions);
+    let exactMatch = this.getExactMatch(possibleOptions);
+    console.log("Exact match: %o", exactMatch);
+    // filter missingNodes: [ [length]: 0 
+  }
+
+  getConfidentEntities(entities) {
+    let result = {};
+    for (const [entityName, entity] of Object.entries(entities)) {
+      let confidentEntityEntry = entityName == OPENHAB_VALUE ? this.getConfidentValueEntityEntry(entity) : this.getConfidentEntityEntry(entity);
+      if (confidentEntityEntry != null) {
+        result[entityName] = confidentEntityEntry;
+      }
     }
+    return result;
+  }
+
+  getConfidentValueEntityEntry(entity) {
+    if (entity.length == 1 && entity[0].confidence > this.confidenceLevel) {
+      return entity[0];
+    }
+    return null;
+  }
+
+  getConfidentEntityEntry(entity) {
+    for (let entityEntry of entity) {
+      if (entityEntry.confidence > this.confidenceLevel) {
+        return entityEntry;
+      }
+    }
+    return null;
+  }
+
+  findPossibleOptions(parent, entities, parentCandidates) {
+    let possibleOptions = [];
+    for (const [nodeName, node] of Object.entries(parent)) {
+      if (nodeName == OPENHAB_DEFAULT_ITEM || nodeName == OPENHAB_STATE) {
+        let possibleOption = this.checkPossibleOption(entities, parentCandidates, node)
+        if (possibleOption) {
+          possibleOptions.push(possibleOption);
+        }
+      } else {
+        for (const [valueNodeName, valueNode] of Object.entries(node)) {
+          let candidate = {entity: nodeName, value: valueNodeName};
+          let candidates = parentCandidates.slice(0);
+          candidates.push(candidate);
+          if (typeof valueNode == 'object') {
+            this.findPossibleOptions(valueNode, entities, candidates).forEach((e) => possibleOptions.push(e));
+          } else {
+            let possibleOption = this.checkPossibleOption(entities, candidates, valueNode)
+            if (possibleOption) {
+              possibleOptions.push(possibleOption);
+            }
+          }
+        }    
+      }
+    }
+    return possibleOptions;
+  }
+
+  checkPossibleOption(entities, candidates, itemNode) {
+    let entityValue = entities[OPENHAB_VALUE];
+    let entityState = entities[OPENHAB_STATE];
+    let state = entityState && entityState.value
+    let value = entityValue && entityValue.value;
+    let missingNodes = [];
+    var matched = value || state ? 1 : 0;
+    if (entities[OPENHAB_UNIT]) matched++;
+    candidates.forEach((candidate) => {
+      let entity = entities[candidate.entity];
+      if (entity) {
+        if (entity.value != candidate.value) return null;
+        matched++;
+      } else {
+        missingNodes.push(candidate)
+      }
+    });
+    if (Object.keys(entities).length > matched) return null;
+    return {itemNode: itemNode, missingNodes: missingNodes, value: value ? value : state};
+  }
+
+  getExactMatch(possibleOptions) {
+    for (let possibleOption of possibleOptions) {
+      if (possibleOption.missingNodes.length == 0) return possibleOption;
+    }
+    return null;
   }
 
   find(parent, entities, callback) {
@@ -74,10 +177,15 @@ class OpenHab {
     return null;
   }
 
+  requestMoreIntents() {
+    callback({item: null, value: null, updated: false, err: null, res: null});
+    return ;
+  }
+
   findDataItem(entities, valueNode) {
     let dataItemEntity = entities[OPENHAB_DATA_ITEM];
     if (dataItemEntity == null) {
-      return valueNode[OPENHAB_DEFAULT];
+      return valueNode[OPENHAB_DEFAULT_ITEM];
     } else if (dataItemEntity && dataItemEntity.length == 1) {
       let dataItem = dataItemEntity[0].value;
       return valueNode[OPENHAB_DATA_ITEM][dataItem];
