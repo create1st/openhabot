@@ -123,10 +123,16 @@ class Bot {
       this.wit.message(text).then(({entities}) => {
         this.openHab.execute(entities, ({item, value, updated, err, res}) => {
           if (!item) {
-            console.error('OpenHab sitemap lookup failed.');
-            self.sendMessage(senderPsid, self.getResponseString(MESSAGE_UNRECOGNIZED_COMMAND));
-          } if (typeof item == 'object') {
-            console.log('OpenHab query not completed: %o', item);
+            if (res.length == 0) {
+              console.error('OpenHab sitemap lookup failed.');
+              self.sendMessage(senderPsid, self.getResponseString(MESSAGE_UNRECOGNIZED_COMMAND));              
+            } else {
+              console.log("Select options: %o", res);
+              self.sendMessage(senderPsid, self.getResponseString(MESSAGE_UNRECOGNIZED_COMMAND));     
+            }
+          } else if (value === undefined) {
+              console.log("Provide value: %o", res);
+              self.sendMessage(senderPsid, self.getResponseString(MESSAGE_UNRECOGNIZED_COMMAND));   
           } else if (err) {
             console.error('OpenHab error:', err);
             self.sendMessage(senderPsid, self.getResponseString(ERROR_OPENHAB_CALL_FAILED, err));
