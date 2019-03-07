@@ -30,6 +30,6 @@
     "node-wit": "^5.0.0"
   },
   "scripts": {
-	"preinstall":"cd $(pwd)"
+    "preinstall":"cd $(pwd)"
   }
 }

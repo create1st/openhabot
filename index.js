@@ -2,11 +2,11 @@
 
 const
   Config = require('./config'),
-  config = new Config('config.json'),
-  sitemap = new Config('sitemap.json'),
+  config = new Config('./config.json'),
+  sitemap = new Config('./sitemap.json'),
   utils = require('./utils'),
   format = utils.format,
-  dictionary = new Config(format('dictionary_%s.json', config.language)),
+  dictionary = new Config(format('./dictionary_%s.json', config.language)),
   {Wit, log} = require('node-wit'),
   Bot = require('./bot'),
   OpenHab = require('./openhab');
