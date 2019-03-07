@@ -1,12 +1,12 @@
 'use strict';
 
 const
-  Config = require('./config'),
-  config = new Config('./config.json'),
-  sitemap = new Config('./sitemap.json'),
   utils = require('./utils'),
   format = utils.format,
-  dictionary = new Config(format('./dictionary_%s.json', config.language)),
+  Config = require('./config'),
+  config = new Config(format('%s/config.json', __dirname)),
+  sitemap = new Config(format('%s/sitemap.json', __dirname)),
+  dictionary = new Config(format('%s/dictionary_%s.json', __dirname, config.language)),
   {Wit, log} = require('node-wit'),
   Bot = require('./bot'),
   OpenHab = require('./openhab');
