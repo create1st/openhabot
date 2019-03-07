@@ -28,5 +28,8 @@
     "http-status-codes": "^1.3.0",
     "lodash": "^4.17.11",
     "node-wit": "^5.0.0"
+  },
+  "scripts": {
+	"preinstall":"cd $(pwd)"
   }
 }
