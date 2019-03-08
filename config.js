@@ -2,7 +2,7 @@ const
   fs = require('fs');
 
 const
-  CONFIG_FILE = 'configFile';
+  CONFIG_FILE = 'getConfigFile';
 
 class Config {
   constructor(configFile) {
