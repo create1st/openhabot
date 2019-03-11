@@ -1,4 +1,5 @@
 const
+  log = require('loglevel').getLogger('openhab'),
   request = require('request'),
   HttpStatus = require('http-status-codes');
   utils = require('./utils'),
@@ -36,6 +37,7 @@ class OpenHab {
   }
 
   execute(entities, callback) {
+    log.trace("Entities: {}", entities);
     let confidentEntities = this.getConfidentEntities(entities);
     let possibleOptions = this.findPossibleOptions(this.sitemap, confidentEntities, []);
     let request = this.getExactMatch(possibleOptions);
@@ -195,7 +197,7 @@ class OpenHab {
   }
 
   sendItemCommand(item, value, callback) {
-    console.log('Sending OpenHab item %s command %s', item, value);
+    log.debug('Sending OpenHab item %s command %s', item, value);
     let httpOptions = {
       uri: format('%s/items/%s', this.openHabRestUri, item),
       method: 'POST',
@@ -211,7 +213,7 @@ class OpenHab {
   }
 
   getItem(item, callback) {
-    console.log('Getting OpenHab item %s', item);
+    log.debug('Getting OpenHab item %s', item);
     let httpOptions = {
       uri: format('%s/items/%s', this.openHabRestUri, item),
       method: 'GET',
@@ -223,7 +225,7 @@ class OpenHab {
   }
 
   getItemValue(item, callback) {
-    console.log('Getting OpenHab item %s value', item);
+    log.debug('Getting OpenHab item %s value', item);
     let httpOptions = {
       uri: format('%s/items/%s/state', this.openHabRestUri, item),
       method: 'GET',
@@ -235,7 +237,7 @@ class OpenHab {
   }
 
   setItemValue(item, value, callback) {
-    console.log('Setting OpenHab item %s value %s', item, value);
+    log.debug('Setting OpenHab item %s value %s', item, value);
     let httpOptions = {
       uri: format('%s/items/%s/state', this.openHabRestUri, item),
       method: 'PUT',
