@@ -12,7 +12,9 @@
 		"set_value": "Cofirmed",
 		"update": "%s has changed the state to %s",
 		"config_refresh": "Configuration refresh operation has been completed succesfully",
-		"bot_started": "Started OpenHaBot"
+		"bot_started": "Started OpenHaBot",
+		"select_option": "Select",
+		"missing_value": "Enter value"
 	},
 	"state": {
 		"OFFLINE": "offline",
@@ -21,6 +23,8 @@
 		"BUSY": "busy",
 		"IDLE": "idle",
 		"ON": "on",
-		"OFF": "off"
+		"OFF": "off",
+		"INVALID": "idle",
+		"MAP_CLEANING": "scheduled cleaning"
 	}
 }
