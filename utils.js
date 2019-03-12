@@ -5,6 +5,11 @@ format = function() {
         string = string.replace(/%[a-z]/, args[i]);
     }
     return string;
+},
+sliceArray = function(arr, size) {
+    return arr.reduce((acc, _, i) => (i % size)
+        ? acc
+        : [...acc, arr.slice(i, i + size)], [])
 }
 
-module.exports = { format };
+module.exports = { format, sliceArray };

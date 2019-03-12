@@ -8,12 +8,14 @@ const
   HttpStatus = require('http-status-codes'),
   utils = require('./utils'),
   getProperty = require('lodash/get'),
-  format = utils.format;
+  format = utils.format,
+  sliceArray = utils.sliceArray;
 
 const
-  IMAGE_GET_URI = 'https://www.iconfinder.com/icons/36720/download/png/128',
-  IMAGE_SET_URI = 'https://www.iconfinder.com/icons/3783/download/png/128',
-  GRAPH_QUCIK_REPLIES_LIMIT = 11,
+  IMAGE_GET_INTENTS_URI = 'https://www.iconfinder.com/icons/17821/download/png/128',
+  GRAPH_BUTTONS_PER_PAGE_LIMIT = 3,
+  GRAPH_ELEMENTS_LIMIT = 10,
+  GRAPH_BUTTON_ELEMENTS_LIMIT = GRAPH_BUTTONS_PER_PAGE_LIMIT * GRAPH_ELEMENTS_LIMIT,
   GRAPH_API_URL = 'https://graph.facebook.com/v2.6/me/messages',
   IMAGE_BASE64 = new RegExp('^data:(image\/(.*));base64,(.*)$'),
   RESPONSE_EVENT_RECEIVED = 'EVENT_RECEIVED',
@@ -114,8 +116,6 @@ class Bot {
     let senderPsid = sender ? sender.id : null;
     if (this.config.authorizedSenders.length > 0 && !this.config.authorizedSenders.includes(senderPsid)) {
       this.handleUnauthorized(senderPsid);
-    } else if (message.quick_reply) {
-      this.handleQuickReply(senderPsid, message.quick_reply);
     } else if (message) {
       this.handleMessage(senderPsid, message);
     } else if (postback) {
@@ -137,12 +137,12 @@ class Bot {
         this.sendMessage(senderPsid, this.getResponseString(MESSAGE_UNRECOGNIZED_COMMAND));
       } else {
         request.value = value;
-        this.openHab.executeApiCall(request, (callback) => this.openHabResponseHandler(senderPsid, callback));
+        this.openHab.executeApiCall(null, request, (callback) => this.openHabResponseHandler(senderPsid, callback));
       }
     } else if (text) {
       this.sendTypingOn(senderPsid);
-      this.wit.message(text).then(({entities}) => {
-        this.openHab.execute(entities, (callback) => this.openHabResponseHandler(senderPsid, callback));
+      this.wit.message(text).then(({_text, entities}) => {
+        this.openHab.execute(_text, entities, (callback) => this.openHabResponseHandler(senderPsid, callback));
       }).catch((err) => {
         log.error('Wit.Ai error:', err.stack || err);
         this.sendMessage(senderPsid, this.getResponseString(ERROR_WIT_CALL_FAILED, err.stack || err)); 
@@ -153,31 +153,30 @@ class Bot {
   }
 
   handlePostback(senderPsid, postback) {
-    log.debug('postback: {}', postback);
-  }
-
-  handleQuickReply(senderPsid, quickReply) {
-    let userSelection = JSON.parse(quickReply.payload);
+    let userSelection = JSON.parse(postback.payload);
     let request = {
       itemNode: userSelection.itemNode,
       value: 'value' in userSelection ? userSelection.value : undefined
     };
     this.sendTypingOn(senderPsid);
-    this.openHab.executeApiCall(request, (callback) => this.openHabResponseHandler(senderPsid, callback));
+    this.openHab.executeApiCall(null, request, (callback) => this.openHabResponseHandler(senderPsid, callback));
   }
 
-  openHabResponseHandler(senderPsid, {item, value, updated, err, res}) {
+  openHabResponseHandler(senderPsid, {item, value, updated, err, req, res}) {
     if (!item) {
-      if (res.length == 0 || res.length > GRAPH_QUCIK_REPLIES_LIMIT) {
+      if (res.length == 0 || res.length > GRAPH_BUTTON_ELEMENTS_LIMIT) {
         log.error('OpenHab sitemap lookup failed.');
         this.sendMessage(senderPsid, this.getResponseString(MESSAGE_UNRECOGNIZED_COMMAND));              
       } else {
-        log.trace('Select options: %o', res); 
-        this.callSendQuickRepliesAPI(senderPsid, this.getResponseString(MESSAGE_SELECT_OPTION), this.getQuickReplies(res));
+        log.trace('Select options: %o', res);
+        let title = this.getResponseString(MESSAGE_SELECT_OPTION);
+        let elements = this.getButtonElements(title, req, res);
+        this.callSendGenericTemplateAPI(senderPsid, elements);
       }
     } else if (value === undefined) {
         log.trace('Provide value: %o', res);
         if (typeof item == 'object') {
+          log.debug('Item node %o', item)
           this.sendMessage(senderPsid, this.getResponseString(MESSAGE_UNRECOGNIZED_COMMAND));   
         } else {
           this.lastResponse[senderPsid] = res;
@@ -233,23 +232,33 @@ class Bot {
     return i18nString ? i18nString : propertyName;
   }
 
-  getQuickReplies(options) {
+  getButtonElements(title, text, options) {
+    return sliceArray(options, GRAPH_BUTTONS_PER_PAGE_LIMIT).map(pageOptions => {
+      return {
+        image_url: IMAGE_GET_INTENTS_URI,
+        title: title,
+        subtitle: text,
+        buttons: this.getButtons(pageOptions)
+      }
+    });
+  }
+
+  getButtons(options) {
     return options.map(option => {
-      let title = this.getButtonTitle(option.missingNodes);
+      let buttonText = this.getButtonText(option.missingNodes);
       let payload = {
         itemNode: option.itemNode,
         value: option.value
       };
       return { 
-        content_type: "text",
-        title: title,
-        payload: JSON.stringify(payload),
-        image_url: option.value === undefined ? IMAGE_GET_URI : IMAGE_SET_URI
+        type: 'postback',
+        title: buttonText,
+        payload: JSON.stringify(payload)
       }
     });
   }
 
-  getButtonTitle(nodes) {
+  getButtonText(nodes) {
     return nodes.reduce((acc, node) => acc + ' ' + node.value, '');
   }
 
@@ -279,7 +288,7 @@ class Bot {
         log.error('Failed request: %s', JSON.stringify(httpOptions));
       } else if (body) {
         let attachment = JSON.parse(body);
-        log.debug("Sent attachment with id: %s", attachment.attachment_id);
+        log.trace('Sent attachment with id: %s', attachment.attachment_id);
       }
     });
     var form = postRequest.form();
@@ -289,10 +298,16 @@ class Bot {
     form.append('filedata', buffer, { filename: filename, contentType: contentType });
   }
 
-  callSendQuickRepliesAPI(senderPsid, text, quickReplies) {
+  callSendGenericTemplateAPI(senderPsid, elements) {
     let message = {
-      text: text,
-      quick_replies: quickReplies
+      attachment: {
+        type: 'template',
+        payload: {
+          image_aspect_ratio: 'square',
+          template_type: 'generic',
+          elements: elements
+        }
+      }
     };
     this.callSendAPI(senderPsid, message);
   }

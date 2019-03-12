@@ -36,31 +36,31 @@ class OpenHab {
     this.initialize();
   }
 
-  execute(entities, callback) {
+  execute(text, entities, callback) {
     log.trace("Entities: {}", entities);
     let confidentEntities = this.getConfidentEntities(entities);
     let possibleOptions = this.findPossibleOptions(this.sitemap, confidentEntities, []);
     let request = this.getExactMatch(possibleOptions);
     if (request) {
-      this.executeApiCall(request, callback);
+      this.executeApiCall(text, request, callback);
     } else {
-      this.requestMoreIntents(possibleOptions, callback);
+      this.requestMoreIntents(text, possibleOptions, callback);
     }
   }
 
-  executeApiCall(request, callback) {
+  executeApiCall(text, request, callback) {
     let itemNode = request.itemNode;
       let value = request.value;
       if (value === undefined) {
         this.getItemValue(itemNode, callback);
       } else if (request.value == null) {
-        this.requestValue(request, callback);
+        this.requestValue(text, request, callback);
       } else if (typeof itemNode == 'object') {
         let commandValue = this.findCommandValue(value, itemNode.values, itemNode.mappings);
         if (commandValue) {
           this.sendItemCommand(itemNode.command, commandValue.toUpperCase(), callback);          
         } else {
-          this.requestValue(request, callback);
+          this.requestValue(text, request, callback);
         }
       } else {
         this.setItemValue(itemNode, value, callback);
@@ -141,7 +141,6 @@ class OpenHab {
     var value = undefined;
     candidates.forEach((candidate) => {
       let candidateEntity = candidate.entity;
-      let candidateValue = candidate.value;
       let entity = entities[candidateEntity];
       if (candidateEntity == OPENHAB_VALUE || candidateEntity == OPENHAB_STATE) {
         if (entity) {
@@ -170,14 +169,14 @@ class OpenHab {
     return null;
   }
 
-  requestMoreIntents(possibleOptions, callback) {
-    callback({item: null, value: null, updated: false, err: null, res: possibleOptions});
+  requestMoreIntents(text, possibleOptions, callback) {
+    callback({item: null, value: null, updated: false, err: null, req: text, res: possibleOptions});
   }
 
-  requestValue(request, callback) {
+  requestValue(text, request, callback) {
     let itemNode = request.itemNode;
     let item = typeof itemNode == 'object' ? itemNode.command : itemNode;
-    callback({item: item, value: undefined, updated: false, err: null, res: request});
+    callback({item: item, value: undefined, updated: false, err: null, req: text, res: request});
   }
 
   findCommandValue(value, possibleValues, mappings) {
@@ -208,7 +207,7 @@ class OpenHab {
       body: value.toString()
     };
     request(httpOptions, (err, res, body) => {
-      callback({item: item, value: value, updated: (err == null), err: err || (res.statusCode != HttpStatus.ACCEPTED ? body : null), res: res});
+      callback({item: item, value: value, updated: (err == null), err: err || (res.statusCode != HttpStatus.ACCEPTED ? body : null), req: httpOptions, res: res});
     });
   }
 
@@ -220,7 +219,7 @@ class OpenHab {
       headers: {'Accept': 'application/json'}
     };
     request(httpOptions, (err, res, body) => {
-      callback({item: item, value: JSON.parse(body), updated: false, err: err || (res.statusCode != HttpStatus.OK ? body : null), res: res});
+      callback({item: item, value: JSON.parse(body), updated: false, err: err || (res.statusCode != HttpStatus.OK ? body : null), req: httpOptions, res: res});
     });
   }
 
@@ -232,7 +231,7 @@ class OpenHab {
       headers: {'Accept': 'text/plain'}
     };
     request(httpOptions, (err, res, body) => {
-      callback({item: item, value: body, updated: false, err: err || (res.statusCode != HttpStatus.OK ? body : null), res: res});
+      callback({item: item, value: body, updated: false, err: err || (res.statusCode != HttpStatus.OK ? body : null), req: httpOptions, res: res});
     });
   }
 
@@ -248,7 +247,7 @@ class OpenHab {
       body: value.toString()
     };
     request(httpOptions, (err, res, body) => {
-      callback({item: item, value: value, updated: (err == null), err: err || (res.statusCode != HttpStatus.ACCEPTED ? body : null), res: res});
+      callback({item: item, value: value, updated: (err == null), err: err || (res.statusCode != HttpStatus.ACCEPTED ? body : null), req: httpOptions, res: res});
     });
   }
 }
