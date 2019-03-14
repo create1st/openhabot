@@ -9,14 +9,8 @@ const
   OPENHAB_VALUE = 'number',
   OPENHAB_UNIT = 'openhab_unit',
   OPENHAB_SET = 'set',
-  OPENHAB_GET = 'get',
-  OPENHAB_DATA_ITEM = 'openhab_data_item'
   OPENHAB_DEFAULT_ITEM = 'default',
-  OPENHAB_STATE = 'openhab_state',
-  OPENHAB_OPERATIONS = 'openhab_operations',
-  OPENHAB_COMMMAND = 'command',
-  OPENHAB_POSTBACK_REQUEST = 'posback_request';
-
+  OPENHAB_STATE = 'openhab_state';
 
 class OpenHab {
   constructor(config, sitemap) {

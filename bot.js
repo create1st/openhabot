@@ -1,6 +1,5 @@
 const
   log = require('loglevel').getLogger('bot'),
-  fs = require('fs'),
   express = require('express'),
   bodyParser = require('body-parser'),
   crypto = require('crypto'),
@@ -12,6 +11,8 @@ const
   sliceArray = utils.sliceArray;
 
 const
+  OPENHAB_DATA_ITEM = 'openhab_data_item',
+  OPENHAB_OPERATIONS = 'openhab_operations',
   IMAGE_GET_INTENTS_URI = 'https://www.iconfinder.com/icons/17821/download/png/128',
   GRAPH_BUTTONS_PER_PAGE_LIMIT = 3,
   GRAPH_ELEMENTS_LIMIT = 10,
@@ -20,13 +21,13 @@ const
   IMAGE_BASE64 = new RegExp('^data:(image\/(.*));base64,(.*)$'),
   RESPONSE_EVENT_RECEIVED = 'EVENT_RECEIVED',
   RESPONSE_UPDATED = 'UPDATED',
+  UPDATE_STATE_MESSAGE_MAPPING = 'update_state_message_mapping',
   MESSAGE_BOT_STARTED = 'message.bot_started',
   MESSAGE_CONFIG_REFRESH = 'message.config_refresh',
   MESSAGE_UPDATE = 'message.update',
   MESSAGE_UNRECOGNIZED_COMMAND = 'message.unrecognized_command',
   MESSAGE_GET_VALUE = 'message.get_value',
   MESSAGE_GET_VALUE_UNDEFINED = 'message.get_value_undefined',
-  MESSAGE_SET_VALUE = 'message.set_value',
   MESSAGE_SELECT_OPTION = 'message.select_option',
   MESSAGE_MISSING_VALUE = 'message.missing_value',
   ERROR_OPENHAB_CALL_FAILED = 'error.openhab_call_failed',
@@ -50,7 +51,7 @@ class Bot {
   start() {
     this.startWebHookApp();
     this.startHttpBindingApp();
-    this.notifyAll(this.getResponseString(MESSAGE_BOT_STARTED));
+    this.notifyAll(MESSAGE_BOT_STARTED);
   }
   
   startWebHookApp() {
@@ -95,10 +96,11 @@ class Bot {
       if (state && state.match(IMAGE_BASE64)) {
         this.notifyAllWithImageBase64(state);
       } else {
-        let i18nState = this.getI18nValue(state);
         this.openHab.getItem(updatedItem, ({item, value, updated, err, res}) => {
           let itemName = err ? updatedItem : value.label;
-          this.notifyAll(this.getResponseString(MESSAGE_UPDATE, itemName, i18nState));
+          let message = this.getUpdateStateMessage(state);
+          let i18nState = this.getStateText(state)
+          this.notifyAll(message, itemName, i18nState);
         });
       }
     });
@@ -108,7 +110,7 @@ class Bot {
       this.dictionary.reload();
       this.openHab.reloadConfigs();
       res.status(HttpStatus.OK).send(RESPONSE_UPDATED);
-      this.notifyAll(this.getResponseString(MESSAGE_CONFIG_REFRESH));
+      this.notifyAll(MESSAGE_CONFIG_REFRESH);
     });
   }
 
@@ -124,31 +126,31 @@ class Bot {
   }
 
   handleUnauthorized(senderPsid) {
-    this.sendMessage(senderPsid, this.getResponseString(ERROR_UNAUTHORIZED, senderPsid));  
+    this.sendMessage(senderPsid, ERROR_UNAUTHORIZED, senderPsid);  
   }
 
   handleMessage(senderPsid, {nlp, text, attachments}) {
-    log.trace("Handling message from %s", senderPsid);
     var request = this.lastResponse[senderPsid];
     if (request) {
       delete this.lastResponse[senderPsid];
       let value = parseFloat(text);
       if (isNaN(value)) {
-        this.sendMessage(senderPsid, this.getResponseString(MESSAGE_UNRECOGNIZED_COMMAND));
+        this.sendMessage(senderPsid, MESSAGE_UNRECOGNIZED_COMMAND);
       } else {
         request.value = value;
         this.openHab.executeApiCall(null, request, (callback) => this.openHabResponseHandler(senderPsid, callback));
       }
     } else if (text) {
+      let queryString = text.toString('utf8');
       this.sendTypingOn(senderPsid);
-      this.wit.message(text).then(({_text, entities}) => {
-        this.openHab.execute(_text, entities, (callback) => this.openHabResponseHandler(senderPsid, callback));
+      this.wit.message(queryString).then(({entities}) => {
+        this.openHab.execute(queryString, entities, (callback) => this.openHabResponseHandler(senderPsid, callback));
       }).catch((err) => {
         log.error('Wit.Ai error:', err.stack || err);
-        this.sendMessage(senderPsid, this.getResponseString(ERROR_WIT_CALL_FAILED, err.stack || err)); 
+        this.sendMessage(senderPsid, ERROR_WIT_CALL_FAILED, err.stack || err); 
       })
     } else {
-      this.sendMessage(senderPsid, this.getResponseString(ERROR_UNSUPPORTED_MESSAGE_TYPE)); 
+      this.sendMessage(senderPsid, ERROR_UNSUPPORTED_MESSAGE_TYPE); 
     } 
   }
 
@@ -162,41 +164,54 @@ class Bot {
     this.openHab.executeApiCall(null, request, (callback) => this.openHabResponseHandler(senderPsid, callback));
   }
 
-  openHabResponseHandler(senderPsid, {item, value, updated, err, req, res}) {
+  async openHabResponseHandler(senderPsid, {item, value, updated, err, req, res}) {
     if (!item) {
       if (res.length == 0 || res.length > GRAPH_BUTTON_ELEMENTS_LIMIT) {
         log.error('OpenHab sitemap lookup failed.');
-        this.sendMessage(senderPsid, this.getResponseString(MESSAGE_UNRECOGNIZED_COMMAND));              
+        this.sendMessage(senderPsid, MESSAGE_UNRECOGNIZED_COMMAND);              
       } else {
-        log.trace('Select options: %o', res);
-        let title = this.getResponseString(MESSAGE_SELECT_OPTION);
-        let elements = this.getButtonElements(title, req, res);
-        this.callSendGenericTemplateAPI(senderPsid, elements);
+          log.trace('Select options: %o', res);
+          let [entityDictionary, error] = await this.getEntityDictionary(res);
+          if (error) {
+            log.error('Wit.Ai error:', error.stack || error);
+            this.sendMessage(senderPsid, ERROR_WIT_CALL_FAILED, error.stack || error);             
+          } else {
+            let title = this.getMessageText(MESSAGE_SELECT_OPTION);
+            let elements = this.getButtonElements(title, req, res, entityDictionary);
+            this.callSendGenericTemplateAPI(senderPsid, elements);
+          }
       }
     } else if (value === undefined) {
         log.trace('Provide value: %o', res);
         if (typeof item == 'object') {
           log.debug('Item node %o', item)
-          this.sendMessage(senderPsid, this.getResponseString(MESSAGE_UNRECOGNIZED_COMMAND));   
+          this.sendMessage(senderPsid, MESSAGE_UNRECOGNIZED_COMMAND);   
         } else {
           this.lastResponse[senderPsid] = res;
-          this.sendMessage(senderPsid, this.getResponseString(MESSAGE_MISSING_VALUE)); 
+          this.sendMessage(senderPsid, MESSAGE_MISSING_VALUE);
         }
     } else if (err) {
       log.error('OpenHab error:', err);
-      this.sendMessage(senderPsid, this.getResponseString(ERROR_OPENHAB_CALL_FAILED, err));
+      this.sendMessage(senderPsid, ERROR_OPENHAB_CALL_FAILED, err);
     } else if (!updated) {
       log.trace('OpenHab get value completed');
       if (value == null || value == 'NULL') {
-        this.sendMessage(senderPsid, this.getResponseString(MESSAGE_GET_VALUE_UNDEFINED));            
+        this.sendMessage(senderPsid, MESSAGE_GET_VALUE_UNDEFINED);            
       } else if (value.match(IMAGE_BASE64)) {
         this.sendImageBase64(senderPsid, value);
       } else {
-        this.sendMessage(senderPsid, this.getResponseString(MESSAGE_GET_VALUE, this.getI18nValue(value)));              
+        let i18nState = this.getStateText(state)
+        this.sendMessage(senderPsid, MESSAGE_GET_VALUE, i18nState);              
       }
     } else {
       log.trace('OpenHab set value completed');
-      this.sendMessage(senderPsid, this.getResponseString(MESSAGE_SET_VALUE));
+      let state = value;
+      this.openHab.getItem(item, ({value, err}) => {
+        let itemName = err ? item : value.label;
+        let message = this.getUpdateStateMessage(state);
+        let i18nState = this.getStateText(state)          
+        this.sendMessage(senderPsid, message, itemName, i18nState);
+      });
     }
   }
 
@@ -207,24 +222,27 @@ class Bot {
     });
   }
 
-  notifyAll(message) {
+  notifyAll() {
     let self = this;
     this.config.authorizedSenders.forEach((senderPsid) => {
-      self.sendMessage(senderPsid, message);
+      self.sendMessage.apply(self, [senderPsid].concat(Array.from(arguments)));
     });
   }
 
-  getResponseString() {
-    let responseId = arguments[0];
-    let string = this.getI18nString(responseId);
-    let args = Array.from(arguments).slice(1);
-    return format.apply(this, [string].concat(args));
+  getMessageText(message, args) {
+    let string = this.getI18nString(message);
+    return format.apply(this, [string].concat(args || []));
   }
 
-  getI18nValue(value) {
+  getStateText(value) {
     let propertyName = format("state.%s", value);
     let i18nValue = this.getI18nString(propertyName);
     return i18nValue === propertyName ? value : i18nValue;
+  }
+
+  getUpdateStateMessage(state) {
+    let message = getProperty(this.dictionary, format('%s.%s', UPDATE_STATE_MESSAGE_MAPPING,state));
+    return message ? message : MESSAGE_UPDATE;
   }
 
   getI18nString(propertyName) {
@@ -232,20 +250,20 @@ class Bot {
     return i18nString ? i18nString : propertyName;
   }
 
-  getButtonElements(title, text, options) {
+  getButtonElements(title, text, options, entityDictionary) {
     return sliceArray(options, GRAPH_BUTTONS_PER_PAGE_LIMIT).map(pageOptions => {
       return {
         image_url: IMAGE_GET_INTENTS_URI,
         title: title,
         subtitle: text,
-        buttons: this.getButtons(pageOptions)
+        buttons: this.getButtons(pageOptions, entityDictionary)
       }
     });
   }
 
-  getButtons(options) {
+  getButtons(options, entityDictionary) {
     return options.map(option => {
-      let buttonText = this.getButtonText(option.missingNodes);
+      let buttonText = this.getButtonText(option.missingNodes, entityDictionary);
       let payload = {
         itemNode: option.itemNode,
         value: option.value
@@ -257,12 +275,55 @@ class Bot {
       }
     });
   }
-
-  getButtonText(nodes) {
-    return nodes.reduce((acc, node) => acc + ' ' + node.value, '');
+  
+  getButtonText(nodes, entityDictionary) {
+    let invertedNodes = nodes.slice().reverse();
+    let isDataItemDefined = this.idDataItemDefined(nodes);
+    return invertedNodes
+      .filter(node => !(isDataItemDefined && node.entity == OPENHAB_OPERATIONS))
+      .reduce((acc, node) => {
+        let entity = entityDictionary[node.entity];
+        let prefix = acc ? acc + '->' : acc;
+        return prefix + this.getValueMetadata(entity, node.value);
+      }, '');
   }
 
-  sendMessage(senderPsid, text) {
+  idDataItemDefined(nodes) {
+    return nodes
+      .filter(node => node.entity == OPENHAB_DATA_ITEM)
+      .length > 0;
+  }
+
+  getValueMetadata(entity, value) {
+    return entity.filter(entityValue => entityValue.value == value)
+      .map(entityValue => entityValue.metadata)
+      .reduce((acc, node) => node, value);
+  }
+  
+  getEntityDictionary(options) {
+    let entities = options.map(option => {
+      return option.missingNodes.map(node => node.entity);
+    }).reduce((acc, node) => acc.concat(node), []);
+    let entityPromises = [...new Set(entities)]
+      .map(entity => this.wit.entityValues(entity));
+    return Promise.all(entityPromises)
+      .then(this.toEntityDictionary)
+      .then(dictionary => [dictionary, null])
+      .catch(err => [null, err]);
+  }
+  
+  toEntityDictionary(entities) {
+    return entities.reduce((acc, node) => {
+      acc[node.name] = node.values;
+      return acc;
+    }, {});
+  }
+
+  sendMessage() {
+    let senderPsid = arguments[0];
+    let message = arguments[1];
+    let args = Array.from(arguments).slice(2);
+    let text = this.getMessageText(message, args);
     this.callSendTextAPI(senderPsid, text); 
   }
 
