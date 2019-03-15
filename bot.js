@@ -200,7 +200,7 @@ class Bot {
       } else if (value.match(IMAGE_BASE64)) {
         this.sendImageBase64(senderPsid, value);
       } else {
-        let i18nState = this.getStateText(state)
+        let i18nState = this.getStateText(value);
         this.sendMessage(senderPsid, MESSAGE_GET_VALUE, i18nState);              
       }
     } else {
@@ -209,7 +209,7 @@ class Bot {
       this.openHab.getItem(item, ({value, err}) => {
         let itemName = err ? item : value.label;
         let message = this.getUpdateStateMessage(state);
-        let i18nState = this.getStateText(state)          
+        let i18nState = this.getStateText(state);
         this.sendMessage(senderPsid, message, itemName, i18nState);
       });
     }
