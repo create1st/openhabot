@@ -13,12 +13,15 @@ const
   dictionary = new Config(format('%s/dictionary_%s.json', __dirname, config.language)),
   WitAi = require('./witai'),
   Bot = require('./bot'),
+  Lookup = require('./lookup'),
   OpenHab = require('./openhab');
 log.getLogger('bot').setLevel('DEBUG');
 log.getLogger('openhab').setLevel('DEBUG');
 log.getLogger('witai').setLevel('DEBUG');
+log.getLogger('lookup').setLevel('DEBUG');
 loglevelStdStreams(log);
-const openHab = new OpenHab(config, sitemap);
+const lookup = new Lookup(config, sitemap);
+const openHab = new OpenHab(config);
 const witAi = new WitAi(config);
-const bot = new Bot(config, dictionary, witAi, openHab);
+const bot = new Bot(config, dictionary, witAi, openHab, lookup);
 bot.start();

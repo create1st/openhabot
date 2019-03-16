@@ -1,10 +1,13 @@
 const
-  log = require('loglevel').getLogger('witai'),
-  utils = require('./utils'),
-  request = require('request'),
-  HttpStatus = require('http-status-codes'),
-  {Wit, witLog} = require('node-wit'),
-  format = utils.format;;
+    log = require('loglevel').getLogger('witai'),
+    utils = require('./utils'),
+    request = require('request'),
+    HttpStatus = require('http-status-codes'),
+    {
+        Wit,
+        witLog
+    } = require('node-wit'),
+    format = utils.format;;
 
 const
     WIT_AI_API_VERSION = '20160516',
@@ -16,21 +19,19 @@ class WitAi extends Wit {
         super({
             // logger: new witLog.Logger(log.DEBUG),
             accessToken: config.witAccessToken
-            });
+        });
         this.config = config;
     }
 
     entities() {
-        let self = this;
         return new Promise((resolve, reject) => {
-            self.sendWitAiRequest(SERVICE_ENTITIES, resolve, reject);
+            this.sendWitAiRequest(SERVICE_ENTITIES, resolve, reject);
         });
     }
 
     entityValues(entity) {
-        let self = this;
         return new Promise((resolve, reject) => {
-            self.sendWitAiRequest(format('%s/%s', SERVICE_ENTITIES, entity), resolve, reject);
+            this.sendWitAiRequest(format('%s/%s', SERVICE_ENTITIES, entity), resolve, reject);
         });
     }
 
@@ -51,7 +52,7 @@ class WitAi extends Wit {
                 reject(err);
             }
             resolve(JSON.parse(body.toString('utf8')));
-        }); 
+        });
     }
 }
 

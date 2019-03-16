@@ -6,7 +6,9 @@ const
 
 class Config {
   constructor(configFile) {
-    this.getConfigFile = function() { return configFile; }
+    this.getConfigFile = function () {
+      return configFile;
+    }
     this.reload();
   }
 
@@ -19,7 +21,7 @@ class Config {
       }
     }
     for (let property in config) {
-      this[property]=config[property];
+      this[property] = config[property];
     }
   }
 }
