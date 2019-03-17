@@ -3,8 +3,8 @@
 }());
 
 const
-  log = require('loglevel'),
-  loglevelStdStreams = require('loglevel-std-streams'),
+  logger = require('./logger'),
+  configureLogger = logger.configureLogger,
   utils = require('./utils'),
   format = utils.format,
   Config = require('./config'),
@@ -18,11 +18,7 @@ const
   autorestart = require('./autorestart'),
   registerRestartHook = autorestart.registerRestartHook;
 
-log.getLogger('bot').setLevel('DEBUG');
-log.getLogger('openhab').setLevel('DEBUG');
-log.getLogger('witai').setLevel('DEBUG');
-log.getLogger('lookup').setLevel('DEBUG');
-loglevelStdStreams(log);
+configureLogger(config.logFile);
 const lookup = new Lookup(config, sitemap);
 const openHab = new OpenHab(config);
 const witAi = new WitAi(config);

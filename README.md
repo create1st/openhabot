@@ -46,7 +46,8 @@ $ ./ssh -R mydomain:80:localhost:1337 serveo.net
 	"confidenceLevel": "0.77",
 	"language": "en",
 	"openHabRestUri": "http://127.0.0.1:8080/rest",
-	"openHabHttpBindingPort": "1338"
+	"openHabHttpBindingPort": "1338",
+	"logFile": "/var/log/openhabot.log"
 }
 ```
 * Create Wit.Ai account
