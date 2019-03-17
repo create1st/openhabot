@@ -21,6 +21,7 @@ const
   IMAGE_BASE64 = new RegExp('^data:(image\/(.*));base64,(.*)$'),
   RESPONSE_EVENT_RECEIVED = 'EVENT_RECEIVED',
   RESPONSE_UPDATED = 'UPDATED',
+  RESPONSE_RESTARTING = 'RESTARTING',
   UPDATE_STATE_MESSAGE_MAPPING = 'update_state_message_mapping',
   MESSAGE_BOT_STARTED = 'message.bot_started',
   MESSAGE_CONFIG_REFRESH = 'message.config_refresh',
@@ -118,6 +119,11 @@ class Bot {
       this.lookup.reloadConfigs();
       res.status(HttpStatus.OK).send(RESPONSE_UPDATED);
       this.notifyAll(MESSAGE_CONFIG_REFRESH);
+    });
+    this.httpBindingApp.post('/rest/system/restart', (req, res) => {
+      log.debug('Restarting OpenHaBot server');
+      res.status(HttpStatus.OK).send(RESPONSE_RESTARTING);
+      process.exit();
     });
   }
 

@@ -14,7 +14,10 @@ const
   WitAi = require('./witai'),
   Bot = require('./bot'),
   Lookup = require('./lookup'),
-  OpenHab = require('./openhab');
+  OpenHab = require('./openhab'),
+  autorestart = require('./autorestart'),
+  registerRestartHook = autorestart.registerRestartHook;
+
 log.getLogger('bot').setLevel('DEBUG');
 log.getLogger('openhab').setLevel('DEBUG');
 log.getLogger('witai').setLevel('DEBUG');
@@ -25,3 +28,4 @@ const openHab = new OpenHab(config);
 const witAi = new WitAi(config);
 const bot = new Bot(config, dictionary, witAi, openHab, lookup);
 bot.start();
+registerRestartHook();
