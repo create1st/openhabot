@@ -1,4 +1,5 @@
 const
+  fs = require('fs'),
   log = require('loglevel').getLogger('bot'),
   express = require('express'),
   bodyParser = require('body-parser'),
@@ -7,7 +8,10 @@ const
   utils = require('./utils'),
   getProperty = require('lodash/get'),
   format = utils.format,
-  sliceArray = utils.sliceArray;
+  sliceArray = utils.sliceArray,
+  toWav = require('audiobuffer-to-wav'),
+  AudioContext = require('web-audio-api').AudioContext,
+  audioContext = new AudioContext();
 
 const
   OPENHAB_DATA_ITEM = 'openhab_data_item',
@@ -33,7 +37,6 @@ const
   ERROR_WIT_CALL_FAILED = 'error.wit_call_failed',
   ERROR_UNSUPPORTED_MESSAGE_TYPE = 'error.unsupported_message_type',
   ERROR_UNAUTHORIZED = 'error.unauthorized';
-
 
 class Bot {
   constructor(config, dictionary, fbMe, wit, openHab, lookup) {
@@ -151,27 +154,48 @@ class Bot {
     this.fbMe.typingOn(senderPsid);
     var selection = this.lastResponse[senderPsid];
     if (selection) {
-      delete this.lastResponse[senderPsid];
-      let value = parseFloat(text);
-      if (isNaN(value)) {
-        this.sendMessage(senderPsid, MESSAGE_UNRECOGNIZED_COMMAND);
-      } else {
-        selection.value = value;
-        this.executeRequest(senderPsid, selection);
-      }
+      this.processPendingSelection(senderPsid, text, selection);
     } else if (text) {
-      let queryString = text.toString('utf8');
-      this.wit.message(queryString)
-        .then((messageResult) => this.lookup.witAiMessageResult(messageResult))
-        .then((lookupResult) => this.processLookupResult(senderPsid, lookupResult))
-        .catch((err) => {
-          log.error('Wit.Ai error:', err.stack || err);
-          this.sendMessage(senderPsid, ERROR_WIT_CALL_FAILED, err.stack || err);
-        })
-    } else if (attachments.type == 'audio') {
+      this.processText(senderPsid, text);
+    } else if (attachments && attachments.length == 1 && attachments[0].type == 'audio') {
+      this.processAudioAttachement(senderPsid, attachments[0].payload.url);
     } else {
+      log.debug('Unsupported attachement type: %s', JSON.stringify(attachments));
       this.sendMessage(senderPsid, ERROR_UNSUPPORTED_MESSAGE_TYPE);
     }
+  }
+
+  processPendingSelection(senderPsid, text, selection) {
+    delete this.lastResponse[senderPsid];
+    let value = parseFloat(text);
+    if (isNaN(value)) {
+      this.sendMessage(senderPsid, MESSAGE_UNRECOGNIZED_COMMAND);
+    } else {
+      selection.value = value;
+      this.executeRequest(senderPsid, selection);
+    }
+  }
+
+  processText(senderPsid, text) {
+    let queryString = text.toString('utf8');
+    this.wit.message(queryString)
+      .then((messageResult) => this.lookup.witAiMessageResult(messageResult))
+      .then((lookupResult) => this.processLookupResult(senderPsid, lookupResult))
+      .catch((err) => {
+        log.error('Wit.Ai error:', err.stack || err);
+        this.sendMessage(senderPsid, ERROR_WIT_CALL_FAILED, err.stack || err);
+      });
+  }
+
+  processAudioAttachement(senderPsid, url) {
+    this.downloadAttachment(url)
+      .then(this.decodeAudio)
+      .then((wav) => this.wit.speech(wav))
+      .then((text) => this.processText(senderPsid, text))
+      .catch((err) => {
+        log.error('Audio handling error:', err);
+        this.sendMessage(senderPsid, ERROR_UNSUPPORTED_MESSAGE_TYPE);
+      });
   }
 
   processLookupResult(senderPsid, {
@@ -403,6 +427,32 @@ class Bot {
     let filename = format("image.%s", imageType);
     this.fbMe.attachment(senderPsid, decodedImage, contentType, filename);
   }
+
+  decodeAudio(buffer) {
+    return new Promise((resolve, reject) => {
+      audioContext.decodeAudioData(buffer, (audioBuffer) => resolve(Buffer.from(toWav(audioBuffer))));
+    });
+  }
+
+  downloadAttachment(uri) {
+    return new Promise((resolve, reject) => {
+      let httpOptions = {
+        uri: uri,
+        method: 'GET',
+        encoding: null
+      };
+      request(httpOptions, (err, res, body) => {
+        if (err || res.statusCode != HttpStatus.OK) {
+          log.error('Unable to send message: %s', JSON.stringify(err || res));
+          log.error('Failed request: %s', JSON.stringify(httpOptions));
+          reject(err || res);
+        } else {
+          resolve(body);
+        }
+      });
+    });
+  }
+
 
 }
 

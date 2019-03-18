@@ -23,6 +23,12 @@ class WitAi extends Wit {
         this.config = config;
     }
 
+    speech(wav) {
+        return new Promise((resolve, reject) => {
+            resolve("Blah");
+        });
+    }
+
     entities() {
         return new Promise((resolve, reject) => {
             this.sendWitAiRequest(SERVICE_ENTITIES, resolve, reject);

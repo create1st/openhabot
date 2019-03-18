@@ -23,12 +23,14 @@
   },
   "homepage": "https://github.com/create1st/openhabot#readme",
   "dependencies": {
+    "audiobuffer-to-wav": "^1.0.0",
     "body-parser": "^1.18.3",
     "express": "^4.16.4",
     "http-status-codes": "^1.3.0",
     "lodash": "^4.17.11",
     "loglevel": "^1.6.1",
     "loglevel-std-streams": "^2.0.1",
-    "node-wit": "^5.0.0"
+    "node-wit": "^5.0.0",
+    "web-audio-api": "^0.2.2"
   }
 }
