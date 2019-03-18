@@ -2,7 +2,6 @@ const
   log = require('loglevel').getLogger('bot'),
   express = require('express'),
   bodyParser = require('body-parser'),
-  crypto = require('crypto'),
   request = require('request'),
   HttpStatus = require('http-status-codes'),
   utils = require('./utils'),
@@ -17,7 +16,6 @@ const
   GRAPH_BUTTONS_PER_PAGE_LIMIT = 3,
   GRAPH_ELEMENTS_LIMIT = 10,
   GRAPH_BUTTON_ELEMENTS_LIMIT = GRAPH_BUTTONS_PER_PAGE_LIMIT * GRAPH_ELEMENTS_LIMIT,
-  GRAPH_API_URL = 'https://graph.facebook.com/v2.6/me/messages',
   IMAGE_BASE64 = new RegExp('^data:(image\/(.*));base64,(.*)$'),
   RESPONSE_EVENT_RECEIVED = 'EVENT_RECEIVED',
   RESPONSE_UPDATED = 'UPDATED',
@@ -38,10 +36,10 @@ const
 
 
 class Bot {
-  constructor(config, dictionary, wit, openHab, lookup) {
+  constructor(config, dictionary, fbMe, wit, openHab, lookup) {
     this.config = config;
+    this.fbMe = fbMe;
     this.openHab = openHab;
-    this.appSecretPoof = crypto.createHmac('sha256', config.appSecret).update(config.accessToken).digest('hex');
     this.dictionary = dictionary;
     this.wit = wit;
     this.lookup = lookup;
@@ -147,11 +145,10 @@ class Bot {
   }
 
   handleMessage(senderPsid, {
-    nlp,
     text,
     attachments
   }) {
-    this.sendTypingOn(senderPsid);
+    this.fbMe.typingOn(senderPsid);
     var selection = this.lastResponse[senderPsid];
     if (selection) {
       delete this.lastResponse[senderPsid];
@@ -171,6 +168,7 @@ class Bot {
           log.error('Wit.Ai error:', err.stack || err);
           this.sendMessage(senderPsid, ERROR_WIT_CALL_FAILED, err.stack || err);
         })
+    } else if (attachments.type == 'audio') {
     } else {
       this.sendMessage(senderPsid, ERROR_UNSUPPORTED_MESSAGE_TYPE);
     }
@@ -211,7 +209,7 @@ class Bot {
         .then((dictionary) => {
           let title = this.getMessageText(MESSAGE_SELECT_OPTION);
           let elements = this.getButtonElements(title, queryString, possibleOptions, dictionary);
-          this.callSendGenericTemplateAPI(senderPsid, elements);
+          this.fbMe.genericTemplate(senderPsid, elements);
         }).catch((err) => {
           log.error('Wit.Ai error:', err.stack || err);
           this.sendMessage(senderPsid, ERROR_WIT_CALL_FAILED, err.stack || err);
@@ -232,7 +230,7 @@ class Bot {
   }
 
   handlePostback(senderPsid, postback) {
-    this.sendTypingOn(senderPsid);
+    this.fbMe.typingOn(senderPsid);
     delete this.lastResponse[senderPsid];
     let selection = this.getSelection(postback);
     if (selection.value === null) {
@@ -344,15 +342,20 @@ class Bot {
   }
 
   getButtonText(nodes, entityDictionary) {
-    let invertedNodes = nodes.slice().reverse();
     let isDataItemDefined = this.idDataItemDefined(nodes);
-    return invertedNodes
+    return nodes
       .filter(node => !(isDataItemDefined && node.entity == OPENHAB_OPERATIONS))
-      .reduce((acc, node) => {
+      .reduce((acc, node, i) => {
         let entity = entityDictionary[node.entity];
-        let prefix = acc ? acc + '->' : acc;
+        let prefix = this.getButtonTextPrefix(acc, i);
         return prefix + this.getValueMetadata(entity, node.value);
       }, '');
+  }
+
+  getButtonTextPrefix(value, i) {
+    if (i == 0) return value;
+    if (i == 1 && value.length > 2) return value + ' ';
+    return value + ' ► ';
   }
 
   idDataItemDefined(nodes) {
@@ -389,7 +392,7 @@ class Bot {
     let message = arguments[1];
     let args = Array.from(arguments).slice(2);
     let text = this.getMessageText(message, args);
-    this.callSendTextAPI(senderPsid, text);
+    this.fbMe.textMessage(senderPsid, text);
   }
 
   sendImageBase64(senderPsid, imageBase64) {
@@ -398,99 +401,9 @@ class Bot {
     let imageType = imageData[2];
     let decodedImage = Buffer.from(imageData[3], 'base64');
     let filename = format("image.%s", imageType);
-    this.callSendAttachmentAPI(senderPsid, decodedImage, contentType, filename);
+    this.fbMe.attachment(senderPsid, decodedImage, contentType, filename);
   }
 
-  callSendAttachmentAPI(senderPsid, buffer, contentType, filename) {
-    let assetType = contentType.split('/')[0];
-    let httpOptions = {
-      uri: GRAPH_API_URL,
-      qs: {
-        access_token: this.config.accessToken
-      },
-      method: 'POST'
-    };
-    var postRequest = request(httpOptions, (err, res, body) => {
-      if (err || res.statusCode != HttpStatus.OK) {
-        log.error('Unable to send message: %s', JSON.stringify(err));
-        log.error('Failed request: %s', JSON.stringify(httpOptions));
-      } else if (body) {
-        let attachment = JSON.parse(body);
-        log.trace('Sent attachment with id: %s', attachment.attachment_id);
-      }
-    });
-    var form = postRequest.form();
-    form.append('appsecret_proof', this.appSecretPoof);
-    form.append('recipient', format("{ \"id\": \"%s\"}", senderPsid));
-    form.append('message', format("{ \"attachment\": { \"type\": \"%s\", \"payload\": { \"is_reusable\": true}}}", assetType));
-    form.append('filedata', buffer, {
-      filename: filename,
-      contentType: contentType
-    });
-  }
-
-  callSendGenericTemplateAPI(senderPsid, elements) {
-    let message = {
-      attachment: {
-        type: 'template',
-        payload: {
-          image_aspect_ratio: 'square',
-          template_type: 'generic',
-          elements: elements
-        }
-      }
-    };
-    this.callSendAPI(senderPsid, message);
-  }
-
-  callSendTextAPI(senderPsid, text) {
-    this.callSendAPI(senderPsid, {
-      text: text
-    });
-  }
-
-  callSendAPI(senderPsid, message) {
-    let requestBody = {
-      appsecret_proof: this.appSecretPoof,
-      recipient: {
-        id: senderPsid
-      },
-      message: message
-    };
-    this.sendRequest(requestBody)
-  }
-
-  sendTypingOn(senderPsid) {
-    this.callSenderActionAPI(senderPsid, 'typing_on');
-  }
-
-  callSenderActionAPI(senderPsid, senderAction) {
-    let requestBody = {
-      appsecret_proof: this.appSecretPoof,
-      recipient: {
-        id: senderPsid
-      },
-      sender_action: senderAction
-    };
-    this.sendRequest(requestBody)
-  }
-
-  sendRequest(requestBody) {
-    let httpOptions = {
-      uri: GRAPH_API_URL,
-      qs: {
-        access_token: this.config.accessToken
-      },
-      method: 'POST',
-      json: requestBody
-    };
-    request(httpOptions, (err, res, body) => {
-      if (err || res.statusCode != HttpStatus.OK) {
-        log.error('Unable to send message: %s', JSON.stringify(err || res));
-        log.error('Failed request: %s', JSON.stringify(httpOptions));
-      }
-    });
-  }
 }
 
 module.exports = Bot;

@@ -13,15 +13,16 @@ const
   dictionary = new Config(format('%s/dictionary_%s.json', __dirname, config.language)),
   WitAi = require('./witai'),
   Bot = require('./bot'),
+  FbMe = require('./fbme'),
   Lookup = require('./lookup'),
   OpenHab = require('./openhab'),
   autorestart = require('./autorestart'),
   registerRestartHook = autorestart.registerRestartHook;
-
 configureLogger(config.logFile);
+const fbMe = new FbMe(config);
 const lookup = new Lookup(config, sitemap);
 const openHab = new OpenHab(config);
 const witAi = new WitAi(config);
-const bot = new Bot(config, dictionary, witAi, openHab, lookup);
+const bot = new Bot(config, dictionary, fbMe, witAi, openHab, lookup);
 bot.start();
 registerRestartHook();
