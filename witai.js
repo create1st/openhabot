@@ -12,7 +12,10 @@ const
 const
     WIT_AI_API_VERSION = '20160516',
     WIT_API_URL = 'https://api.wit.ai',
-    SERVICE_ENTITIES = 'entities';
+    SERVICE_ENTITIES = 'entities',
+    SERVICE_SPEECH = 'speech',
+    WAV_AUDIO_CONTENT_TYPE = 'audio/wav',
+    AUDIO_FILE_NAME = 'audio.wav';
 
 class WitAi extends Wit {
     constructor(config) {
@@ -25,7 +28,7 @@ class WitAi extends Wit {
 
     speech(wav) {
         return new Promise((resolve, reject) => {
-            this.sendWitAiAttachment('speech', wav, 'audio/wav', 'audio.wav', resolve, reject);
+            this.sendWitAiAttachment(SERVICE_SPEECH, wav, WAV_AUDIO_CONTENT_TYPE, AUDIO_FILE_NAME, resolve, reject);
         });
     }
 
