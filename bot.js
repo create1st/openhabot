@@ -1,5 +1,4 @@
 const
-  fs = require('fs'),
   log = require('loglevel').getLogger('bot'),
   express = require('express'),
   bodyParser = require('body-parser'),
@@ -191,9 +190,10 @@ class Bot {
     this.downloadAttachment(url)
       .then(this.decodeAudio)
       .then((wav) => this.wit.speech(wav))
-      .then((text) => this.processText(senderPsid, text))
+      .then((messageResult) => this.lookup.witAiMessageResult(messageResult))
+      .then((lookupResult) => this.processLookupResult(senderPsid, lookupResult))
       .catch((err) => {
-        log.error('Audio handling error:', err);
+        log.error('Wit.Ai audio handling error:', err);
         this.sendMessage(senderPsid, ERROR_UNSUPPORTED_MESSAGE_TYPE);
       });
   }

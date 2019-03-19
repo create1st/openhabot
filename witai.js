@@ -25,7 +25,7 @@ class WitAi extends Wit {
 
     speech(wav) {
         return new Promise((resolve, reject) => {
-            resolve("Blah");
+            this.sendWitAiAttachment('speech', wav, 'audio/wav', 'audio.wav', resolve, reject);
         });
     }
 
@@ -50,6 +50,27 @@ class WitAi extends Wit {
                 'Content-Type': 'application/json',
             },
             method: 'GET'
+        };
+        request(httpOptions, (err, res, body) => {
+            if (err || res.statusCode != HttpStatus.OK) {
+                log.error('Unable to send message: %s', JSON.stringify(err || res));
+                log.error('Failed request: %s', JSON.stringify(httpOptions));
+                reject(err);
+            }
+            resolve(JSON.parse(body.toString('utf8')));
+        });
+    }
+
+    sendWitAiAttachment(service, buffer, contentType, filename, resolve, reject) {
+        let httpOptions = {
+            uri: format('%s/%s', WIT_API_URL, service),
+            headers: {
+                'Authorization': format('Bearer %s', this.config.witAccessToken),
+                'Accept': format('application/vnd.wit.%sjson', WIT_AI_API_VERSION),
+                'Content-Type': contentType
+            },
+            method: 'POST',
+            body: buffer
         };
         request(httpOptions, (err, res, body) => {
             if (err || res.statusCode != HttpStatus.OK) {
