@@ -65,7 +65,7 @@ class Bot {
       let challenge = req.query['hub.challenge'];
       if (mode && token) {
         if (mode === 'subscribe' && token === this.config.verifyToken) {
-          log.debug('Webhook authorized by Facebook application');
+          log.info('Webhook authorized by Facebook application');
           res.status(HttpStatus.OK).send(challenge);
         } else {
           res.sendStatus(HttpStatus.FORBIDDEN);
